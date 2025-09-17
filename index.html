@@ -7,38 +7,44 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div class="container">
-        <header>
-            <h1>SkyChat</h1>
-        </header>
+        <div class="sidebar">
+            <div class="user-profile">
+                <img id="profile-pic" src="default-avatar.png" alt="Profil Fotoğrafı">
+                <h2 id="user-name">Kullanıcı Adı</h2>
+                <p id="user-bio">Biyografi</p>
+                <button id="edit-profile-btn">Profili Düzenle</button>
+            </div>
+            <div class="contacts">
+                <h3>Kişiler</h3>
+                <ul id="contact-list">
+                    </ul>
+            </div>
+            <div class="groups">
+                <h3>Gruplar</h3>
+                <ul id="group-list">
+                    </ul>
+            </div>
+        </div>
 
-        <main id="app-content">
-            <section id="auth-section">
-                <h2>Kullanıcı Girişi</h2>
-                <input type="text" id="username" placeholder="Kullanıcı Adı">
-                <input type="text" id="bio" placeholder="Biyografi">
-                <input type="file" id="profilePic" accept="image/*">
-                <button id="login-button">Giriş Yap</button>
-            </section>
-
-            <section id="chat-section" style="display: none;">
-                <div id="chat-header">
-                    <h3 id="current-chat-name"></h3>
-                    <button id="create-group-button">Grup Oluştur</button>
+        <div class="chat-area">
+            <div id="chat-header">
+                <h2 id="current-chat-name">Sohbet Seçin</h2>
+                <span id="chat-info"></span>
+            </div>
+            <div id="message-box">
                 </div>
-                <div id="message-list">
-                    </div>
-                <div id="message-input-area">
-                    <input type="text" id="message-input" placeholder="Mesajını yaz...">
-                    <button id="send-message-button">Gönder</button>
-                </div>
-            </section>
-        </main>
+            <div id="input-area">
+                <input type="text" id="message-input" placeholder="Mesaj yazın...">
+                <button id="send-btn">Gönder</button>
+            </div>
+        </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
