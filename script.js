@@ -119,7 +119,7 @@ async function loginUser() {
             alert("Kullanıcı bulunamadı. Lütfen kayıt olun.");
         } else {
             const userData = querySnapshot.docs[0].data();
-            const userId = querySnapshot.docs[0].data().userId;
+            const userId = userData.userId;
 
             // Başarılı giriş
             localStorage.setItem('currentUserUsername', username);
@@ -151,9 +151,9 @@ function loadUserProfile() {
     const userId = localStorage.getItem('currentUserId');
 
     if (username) {
-        currentUserUsername.textContent = username + ' (ID: ' + userId + ')';
+        currentUserUsername.textContent = username + (userId ? ' (ID: ' + userId + ')' : '');
         currentUserBio.textContent = bio || "Biyografim";
-        currentUserProfilePic.src = profilePicUrl || 'default_avatar.png';
+        currentUserProfilePic.src = profilePicUrl || 'https://via.placeholder.com/80';
     }
 }
 
@@ -183,7 +183,6 @@ async function deleteAccount() {
         }
     }
 }
-
 
 // Uygulama başladığında kontrol et
 window.onload = () => {
