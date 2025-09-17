@@ -15,6 +15,15 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Rastgele profil fotoğrafları için Imgur link listesi
+const profilePictureUrls = [
+    "https://i.imgur.com/BDFeiYS.png",
+    "https://i.imgur.com/NClcnsn.png",
+    "https://i.imgur.com/CCy3TAj.png",
+    "https://i.imgur.com/BEOiE4Q.png",
+    // Buraya istediğiniz kadar fotoğraf URL'si ekleyebilirsiniz
+];
+
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 const toggleAuthText = document.getElementById('toggle-auth-text');
@@ -25,6 +34,7 @@ const loginUsernameInput = document.getElementById('login-username');
 const signupUsernameInput = document.getElementById('signup-username');
 const signupBioInput = document.getElementById('signup-bio');
 
+const currentUserProfilePic = document.getElementById('current-user-profile-pic');
 const currentUserUsername = document.getElementById('current-user-username');
 const currentUserBio = document.getElementById('current-user-bio');
 
@@ -53,18 +63,38 @@ async function signupUser() {
             return;
         }
 
+        // Benzersiz ID oluşturma (1000-5000 arası)
+        let userId;
+        let isIdUsed = true;
+        while (isIdUsed) {
+            userId = Math.floor(Math.random() * (5000 - 1000 + 1)) + 1000;
+            const idDoc = await db.collection('users').where('userId', '==', userId).get();
+            if (idDoc.empty) {
+                isIdUsed = false;
+            }
+        }
+
+        // Rastgele profil fotoğrafı seçimi
+        const randomPicUrl = profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)];
+
         // Firestore'a kullanıcı bilgilerini kaydetme
         await db.collection('users').add({
+            userId: userId,
             username: username,
             bio: bio,
-            profilePictureUrl: 'default_avatar.png', // Profil fotoğrafı devredışı olduğu için sabit bir değer verdik
+            profilePictureUrl: randomPicUrl,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert("Kayıt başarılı! Lütfen giriş yapın.");
-        toggleAuthForms(); // Kayıt sonrası giriş formuna dön
-        signupUsernameInput.value = '';
-        signupBioInput.value = '';
+        // Kayıt başarılı, kullanıcıyı otomatik olarak giriş yaptır
+        localStorage.setItem('currentUserUsername', username);
+        localStorage.setItem('currentUserBio', bio);
+        localStorage.setItem('currentUserProfilePic', randomPicUrl);
+        localStorage.setItem('currentUserId', userId);
+
+        showApp();
+        loadUserProfile();
+        alert("Kayıt başarılı! Hoş geldin, ID numaran: " + userId);
 
     } catch (error) {
         console.error("Kayıt sırasında hata oluştu: ", error);
@@ -89,12 +119,16 @@ async function loginUser() {
             alert("Kullanıcı bulunamadı. Lütfen kayıt olun.");
         } else {
             const userData = querySnapshot.docs[0].data();
-            // Başarılı giriş
-            localStorage.setItem('currentUserUsername', username); // Kullanıcıyı lokalde sakla
-            localStorage.setItem('currentUserBio', userData.bio);
+            const userId = querySnapshot.docs[0].data().userId;
 
-            showApp(); // Uygulama arayüzünü göster
-            loadUserProfile(); // Profil bilgilerini yükle
+            // Başarılı giriş
+            localStorage.setItem('currentUserUsername', username);
+            localStorage.setItem('currentUserBio', userData.bio);
+            localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
+            localStorage.setItem('currentUserId', userId);
+
+            showApp();
+            loadUserProfile();
             alert("Giriş başarılı!");
         }
     } catch (error) {
@@ -113,12 +147,43 @@ function showApp() {
 function loadUserProfile() {
     const username = localStorage.getItem('currentUserUsername');
     const bio = localStorage.getItem('currentUserBio');
+    const profilePicUrl = localStorage.getItem('currentUserProfilePic');
+    const userId = localStorage.getItem('currentUserId');
 
     if (username) {
-        currentUserUsername.textContent = username;
+        currentUserUsername.textContent = username + ' (ID: ' + userId + ')';
         currentUserBio.textContent = bio || "Biyografim";
+        currentUserProfilePic.src = profilePicUrl || 'default_avatar.png';
     }
 }
+
+// Hesabı silme işlemi
+async function deleteAccount() {
+    const username = localStorage.getItem('currentUserUsername');
+    if (!username) {
+        alert("Kullanıcı bulunamadı.");
+        return;
+    }
+
+    if (confirm("Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
+        try {
+            const usersRef = db.collection('users');
+            const querySnapshot = await usersRef.where('username', '==', username).get();
+
+            if (!querySnapshot.empty) {
+                const userDocId = querySnapshot.docs[0].id;
+                await db.collection('users').doc(userDocId).delete();
+                localStorage.clear();
+                location.reload(); // Sayfayı yenile ve giriş ekranına dön
+                alert("Hesabınız başarıyla silindi.");
+            }
+        } catch (error) {
+            console.error("Hesap silinirken hata oluştu: ", error);
+            alert("Hesap silinirken bir hata oluştu.");
+        }
+    }
+}
+
 
 // Uygulama başladığında kontrol et
 window.onload = () => {
