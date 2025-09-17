@@ -1,21 +1,22 @@
-// Firebase'i başlatma
+// Firebase'i başlatma (FirebaseConfig'iniz doğru varsayılmıştır)
 const firebaseConfig = {
-  apiKey: "AIzaSyD4e2l_0Xs5Ie5brTW79aARxXWg_AJYof4",
-  authDomain: "skychat-5decd.firebaseapp.com",
-  projectId: "skychat-5decd",
-  storageBucket: "skychat-5decd.firebasestorage.app",
-  messagingSenderId: "410944380555",
-  appId: "1:410944380555:web:1eb77e04265fab183fbe8e",
-  measurementId: "G-7YSVH37SGM"
+    apiKey: "AIzaSyD4e2l_0Xs5Ie5brTW79aARxXWg_AJYof4",
+    authDomain: "skychat-5decd.firebaseapp.com",
+    projectId: "skychat-5decd",
+    storageBucket: "skychat-5decd.firebasestorage.app",
+    messagingSenderId: "410944380555",
+    appId: "1:410944380555:web:1eb77e04265fab183fbe8e",
+    measurementId: "G-7YSVH37SGM"
 };
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
+const auth = firebase.auth(); // Auth modülü henüz kullanılmıyor ama ileride gerekebilir.
 const db = firebase.firestore();
 const storage = firebase.storage();
 
+// DOM Elementleri
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 const toggleAuthText = document.getElementById('toggle-auth-text');
@@ -31,6 +32,8 @@ const currentUserProfilePic = document.getElementById('current-user-profile-pic'
 const currentUserUsername = document.getElementById('current-user-username');
 const currentUserBio = document.getElementById('current-user-bio');
 
+// --- Fonksiyonlar ---
+
 // Kullanıcı girişi/kaydı arasında geçiş yapma
 function toggleAuthForms() {
     loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
@@ -41,9 +44,18 @@ function toggleAuthForms() {
 // Profil fotoğrafını yükleme ve URL'sini alma
 async function uploadProfilePicture(file) {
     if (!file) return null;
-    const storageRef = storage.ref(`profilePictures/${Date.now()}_${file.name}`);
-    await storageRef.put(file);
-    return await storageRef.getDownloadURL();
+    // Dosya adını daha benzersiz hale getirelim
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.name}`;
+    const storageRef = storage.ref(`profilePictures/${fileName}`);
+
+    try {
+        const snapshot = await storageRef.put(file);
+        return await snapshot.ref.getDownloadURL();
+    } catch (error) {
+        console.error("Profil fotoğrafı yüklenirken hata oluştu: ", error);
+        throw error; // Hata tekrar fırlatılırsa üstteki catch bloğu yakalar
+    }
 }
 
 // Yeni kullanıcı kaydetme
@@ -58,9 +70,12 @@ async function signupUser() {
     }
 
     try {
-        // Kullanıcı adı zaten kullanılıyor mu kontrol et (basit bir kontrol)
-        const userDoc = await db.collection('users').where('username', '==', username).get();
-        if (!userDoc.empty) {
+        // Kullanıcı adının benzersizliğini kontrol et
+        const usersRef = db.collection('users');
+        const usernameQuery = usersRef.where('username', '==', username).limit(1);
+        const userDocSnapshot = await usernameQuery.get();
+
+        if (!userDocSnapshot.empty) {
             alert("Bu kullanıcı adı zaten kullanılıyor!");
             return;
         }
@@ -70,16 +85,17 @@ async function signupUser() {
             profilePicUrl = await uploadProfilePicture(profilePicFile);
         }
 
-        // Firestore'a kullanıcı bilgilerini kaydetme
-        await db.collection('users').add({
+        // Kullanıcıyı Firestore'a ekle
+        await usersRef.add({
             username: username,
-            bio: bio,
-            profilePictureUrl: profilePicUrl || 'default_avatar.png', // Varsayılan avatar için bir yol belirleyebilirsiniz
+            bio: bio || '', // Biyografi boşsa boş string ata
+            profilePictureUrl: profilePicUrl || 'https://via.placeholder.com/80', // Varsayılan avatar URL'si
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         alert("Kayıt başarılı! Lütfen giriş yapın.");
         toggleAuthForms(); // Kayıt sonrası giriş formuna dön
+        // Form alanlarını temizle
         signupUsernameInput.value = '';
         signupBioInput.value = '';
         signupProfilePicInput.value = ''; // Dosya input'unu sıfırlama
@@ -106,11 +122,14 @@ async function loginUser() {
         if (querySnapshot.empty) {
             alert("Kullanıcı bulunamadı. Lütfen kayıt olun.");
         } else {
-            const userData = querySnapshot.docs[0].data();
-            // Başarılı giriş
-            localStorage.setItem('currentUserUsername', username); // Kullanıcıyı lokalde sakla
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+
+            // Kullanıcı bilgilerini localStorage'a kaydet
+            localStorage.setItem('currentUserUsername', username);
             localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
             localStorage.setItem('currentUserBio', userData.bio);
+            localStorage.setItem('currentUserId', userDoc.id); // ID'yi de saklayalım
 
             showApp(); // Uygulama arayüzünü göster
             loadUserProfile(); // Profil bilgilerini yükle
@@ -137,11 +156,11 @@ function loadUserProfile() {
     if (username) {
         currentUserUsername.textContent = username;
         currentUserBio.textContent = bio || "Biyografim"; // Biyografi yoksa varsayılan
-        currentUserProfilePic.src = profilePicUrl || 'default_avatar.png'; // Varsayılan avatar
+        currentUserProfilePic.src = profilePicUrl || 'https://via.placeholder.com/80'; // Varsayılan avatar
     }
 }
 
-// Uygulama başladığında kontrol et
+// Uygulama yüklendiğinde kullanıcı oturumunu kontrol et
 window.onload = () => {
     const username = localStorage.getItem('currentUserUsername');
     if (username) {
@@ -149,3 +168,9 @@ window.onload = () => {
         loadUserProfile();
     }
 };
+
+// --- İleride Eklenecekler ---
+// Yeni mesaj gönderme fonksiyonu
+// Sohbet geçmişini yükleme
+// Grup oluşturma/katılma
+// Mesaj düzenleme/kopyalama
