@@ -7,44 +7,39 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div class="container">
-        <div class="sidebar">
-            <div class="user-profile">
-                <img id="profile-pic" src="default-avatar.png" alt="Profil Fotoğrafı">
-                <h2 id="user-name">Kullanıcı Adı</h2>
-                <p id="user-bio">Biyografi</p>
-                <button id="edit-profile-btn">Profili Düzenle</button>
+        <div id="auth-container">
+            <h2>SkyChat'e Hoş Geldiniz!</h2>
+            <div id="login-form">
+                <h3>Giriş Yap</h3>
+                <input type="text" id="login-username" placeholder="Kullanıcı Adı (ID)">
+                <button onclick="loginUser()">Giriş Yap</button>
             </div>
-            <div class="contacts">
-                <h3>Kişiler</h3>
-                <ul id="contact-list">
-                    </ul>
+            <div id="signup-form" style="display: none;">
+                <h3>Kayıt Ol</h3>
+                <input type="text" id="signup-username" placeholder="Kullanıcı Adı (ID)">
+                <input type="text" id="signup-bio" placeholder="Biyografi">
+                <input type="file" id="signup-profile-pic" accept="image/*">
+                <button onclick="signupUser()">Kayıt Ol</button>
             </div>
-            <div class="groups">
-                <h3>Gruplar</h3>
-                <ul id="group-list">
-                    </ul>
-            </div>
+            <p id="toggle-auth-text" onclick="toggleAuthForms()">Hesabın yok mu? Kayıt ol!</p>
         </div>
 
-        <div class="chat-area">
-            <div id="chat-header">
-                <h2 id="current-chat-name">Sohbet Seçin</h2>
-                <span id="chat-info"></span>
+        <div id="app-container" style="display: none;">
+            <div id="profile-section">
+                <img id="current-user-profile-pic" src="" alt="Profil Fotoğrafı">
+                <h3 id="current-user-username"></h3>
+                <p id="current-user-bio"></p>
             </div>
-            <div id="message-box">
+            <div id="chat-section">
                 </div>
-            <div id="input-area">
-                <input type="text" id="message-input" placeholder="Mesaj yazın...">
-                <button id="send-btn">Gönder</button>
-            </div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
