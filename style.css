@@ -99,7 +99,7 @@ body {
     font-size: 0.9rem;
 }
 
-#create-chat-button, .delete-button {
+#create-chat-button, #create-group-button, .delete-button {
     width: 100%;
     padding: 10px;
     margin-top: 10px;
@@ -111,6 +111,11 @@ body {
 
 #create-chat-button {
     background-color: #007bff;
+    color: white;
+}
+
+#create-group-button {
+    background-color: #17a2b8;
     color: white;
 }
 
@@ -255,6 +260,7 @@ body {
     cursor: not-allowed;
 }
 
+/* Modal Stilleri */
 .modal {
     display: none;
     position: fixed;
@@ -322,7 +328,7 @@ body {
 
     #main-content {
         width: 100%;
-        display: none; /* İlk başta sohbet alanı gizli */
+        display: none;
     }
 
     .container {
