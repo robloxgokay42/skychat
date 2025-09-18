@@ -159,8 +159,8 @@ function loadUserProfile() {
 
 // Hesabı silme işlemi
 async function deleteAccount() {
-    const userId = localStorage.getItem('currentUserId');
-    if (!userId) {
+    const username = localStorage.getItem('currentUserUsername');
+    if (!username) {
         alert("Kullanıcı bulunamadı.");
         return;
     }
@@ -168,7 +168,7 @@ async function deleteAccount() {
     if (confirm("Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
         try {
             const usersRef = db.collection('users');
-            const querySnapshot = await usersRef.where('userId', '==', parseInt(userId)).get();
+            const querySnapshot = await usersRef.where('username', '==', username).get();
 
             if (!querySnapshot.empty) {
                 const userDocId = querySnapshot.docs[0].id;
@@ -188,7 +188,6 @@ async function deleteAccount() {
 window.onload = async () => {
     const username = localStorage.getItem('currentUserUsername');
     if (username) {
-        // localStorage'daki ID'yi kullanarak veritabanından güncel veriyi çek
         const usersRef = db.collection('users');
         const querySnapshot = await usersRef.where('username', '==', username).limit(1).get();
 
@@ -201,7 +200,6 @@ window.onload = async () => {
             showApp();
             loadUserProfile();
         } else {
-            // Eğer kullanıcı veritabanından silinmişse, localStorage'ı temizle
             localStorage.clear();
             location.reload();
         }
