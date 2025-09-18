@@ -168,11 +168,11 @@ body {
     color: #dc3545;
     font-size: 1.2rem;
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.5; /* Her zaman görünür olsun */
     transition: opacity 0.2s;
 }
 
-#chat-list li:hover .chat-item-delete {
+.chat-item-delete:hover {
     opacity: 1;
 }
 
@@ -204,17 +204,18 @@ body {
     flex-grow: 1;
 }
 
-#group-menu-button {
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropbtn {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
     color: #333;
-}
-
-#group-menu-container {
-    position: relative;
-    display: inline-block;
+    padding: 0;
 }
 
 .dropdown-content {
