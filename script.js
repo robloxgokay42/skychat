@@ -58,6 +58,11 @@ const chatListUl = document.getElementById('chat-list-ul');
 const groupMenuDropdown = document.getElementById('group-menu-dropdown');
 const groupMenu = groupMenuDropdown.querySelector('.dropdown-content');
 
+const addUserModal = document.getElementById('add-user-modal');
+const addUserCloseButton = document.getElementById('add-user-close');
+const addUserIdInput = document.getElementById('add-user-id');
+const addUserToGroupButton = document.getElementById('add-user-to-group-button');
+
 let currentChatId = null;
 let chatType = null;
 let foundUsers = [];
@@ -85,35 +90,22 @@ async function signupUser() {
             return;
         }
 
-        let userId;
-        let isIdUsed = true;
-        while (isIdUsed) {
-            userId = Math.floor(Math.random() * (5000 - 1000 + 1)) + 1000;
-            const idDoc = await db.collection('users').where('userId', '==', userId).get();
-            if (idDoc.empty) {
-                isIdUsed = false;
-            }
-        }
-
-        const randomPicUrl = profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)];
-
-        await db.collection('users').add({
-            userId: userId,
+        const newUserRef = await db.collection('users').add({
             username: username,
             bio: bio,
-            profilePictureUrl: randomPicUrl,
+            profilePictureUrl: profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)],
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         localStorage.setItem('currentUserUsername', username);
         localStorage.setItem('currentUserBio', bio);
-        localStorage.setItem('currentUserProfilePic', randomPicUrl);
-        localStorage.setItem('currentUserId', userId);
+        localStorage.setItem('currentUserProfilePic', (await newUserRef.get()).data().profilePictureUrl);
+        localStorage.setItem('currentUserId', newUserRef.id);
 
         showApp();
         loadUserProfile();
         listenForChats();
-        alert("Kayıt başarılı! Hoş geldin, ID numaran: " + userId);
+        alert("Kayıt başarılı! Hoş geldin, ID'n: " + newUserRef.id);
     } catch (error) {
         console.error("Kayıt sırasında hata oluştu: ", error);
         alert("Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.");
@@ -135,8 +127,9 @@ async function loginUser() {
         if (querySnapshot.empty) {
             alert("Kullanıcı bulunamadı. Lütfen kayıt olun.");
         } else {
-            const userData = querySnapshot.docs[0].data();
-            const userId = userData.userId;
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+            const userId = userDoc.id; // Firestore belge kimliğini kullanıyoruz.
 
             localStorage.setItem('currentUserUsername', username);
             localStorage.setItem('currentUserBio', userData.bio);
@@ -173,24 +166,18 @@ function loadUserProfile() {
 }
 
 async function deleteAccount() {
-    const username = localStorage.getItem('currentUserUsername');
-    if (!username) {
+    const userId = localStorage.getItem('currentUserId');
+    if (!userId) {
         alert("Kullanıcı bulunamadı.");
         return;
     }
 
     if (confirm("Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
         try {
-            const usersRef = db.collection('users');
-            const querySnapshot = await usersRef.where('username', '==', username).get();
-
-            if (!querySnapshot.empty) {
-                const userDocId = querySnapshot.docs[0].id;
-                await db.collection('users').doc(userDocId).delete();
-                localStorage.clear();
-                location.reload();
-                alert("Hesabınız başarıyla silindi.");
-            }
+            await db.collection('users').doc(userId).delete();
+            localStorage.clear();
+            location.reload();
+            alert("Hesabınız başarıyla silindi.");
         } catch (error) {
             console.error("Hesap silinirken hata oluştu: ", error);
             alert("Hesap silinirken bir hata oluştu.");
@@ -199,43 +186,25 @@ async function deleteAccount() {
 }
 
 window.onload = async () => {
-    const username = localStorage.getItem('currentUserUsername');
+    const userId = localStorage.getItem('currentUserId');
     
-    if (username) {
-        const usersRef = db.collection('users');
-        const querySnapshot = await usersRef.where('username', '==', username).limit(1).get();
-
-        if (!querySnapshot.empty) {
-            const userData = querySnapshot.docs[0].data();
-            
-            if (!userData.userId) {
-                let newUserId;
-                let isIdUsed = true;
-                while (isIdUsed) {
-                    newUserId = Math.floor(Math.random() * (5000 - 1000 + 1)) + 1000;
-                    const idDoc = await db.collection('users').where('userId', '==', newUserId).get();
-                    if (idDoc.empty) {
-                        isIdUsed = false;
-                    }
-                }
-                const newPicUrl = profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)];
-
-                await querySnapshot.docs[0].ref.update({
-                    userId: newUserId,
-                    profilePictureUrl: newPicUrl
-                });
-
-                localStorage.setItem('currentUserId', newUserId);
-                localStorage.setItem('currentUserProfilePic', newPicUrl);
-            } else {
-                localStorage.setItem('currentUserId', userData.userId);
+    if (userId) {
+        try {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                localStorage.setItem('currentUserUsername', userData.username);
+                localStorage.setItem('currentUserBio', userData.bio);
                 localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
+                showApp();
+                loadUserProfile();
+                listenForChats();
+            } else {
+                localStorage.clear();
+                location.reload();
             }
-            
-            showApp();
-            loadUserProfile();
-            listenForChats();
-        } else {
+        } catch (error) {
+            console.error("Kullanıcı verisi yüklenirken hata oluştu: ", error);
             localStorage.clear();
             location.reload();
         }
@@ -275,11 +244,18 @@ window.onclick = (event) => {
     if (event.target == createChatModal) {
         createChatModal.style.display = 'none';
     }
+    if (event.target == addUserModal) {
+        addUserModal.style.display = 'none';
+    }
+};
+
+addUserCloseButton.onclick = () => {
+    addUserModal.style.display = 'none';
 };
 
 findUsersButton.onclick = async () => {
-    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
-    const targetIds = targetIdsInput.value.trim().split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    const currentUserId = localStorage.getItem('currentUserId');
+    const targetIds = targetIdsInput.value.trim().split(',').map(id => id.trim()).filter(id => id);
 
     if (targetIds.length === 0) {
         userSearchStatus.textContent = 'Lütfen geçerli ID\'ler girin.';
@@ -300,10 +276,10 @@ findUsersButton.onclick = async () => {
 
     try {
         const usersRef = db.collection('users');
-        const querySnapshot = await usersRef.where('userId', 'in', allIds).get();
+        const querySnapshot = await usersRef.where(firebase.firestore.FieldPath.documentId(), 'in', allIds).get();
 
         if (querySnapshot.docs.length === allIds.length) {
-            foundUsers = querySnapshot.docs.map(doc => doc.data());
+            foundUsers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             userSearchStatus.textContent = 'Tüm kullanıcılar bulundu!';
             startChatButton.disabled = false;
         } else {
@@ -325,11 +301,12 @@ startChatButton.onclick = async () => {
     let chatDocId;
     let chatName;
     let chatPicUrl;
+    const currentUserId = localStorage.getItem('currentUserId');
 
     if (chatType === 'private') {
-        const partner = foundUsers.find(user => user.userId !== parseInt(localStorage.getItem('currentUserId')));
+        const partner = foundUsers.find(user => user.id !== currentUserId);
         if (partner) {
-            chatDocId = [localStorage.getItem('currentUserId'), partner.userId].sort().join('_');
+            chatDocId = [currentUserId, partner.id].sort().join('_');
             chatName = partner.username;
             chatPicUrl = partner.profilePictureUrl;
         }
@@ -344,7 +321,7 @@ startChatButton.onclick = async () => {
         chatPicUrl = 'https://via.placeholder.com/40';
     }
     
-    const participants = foundUsers.map(user => user.userId);
+    const participants = foundUsers.map(user => user.id);
     const chatRef = await createOrGetChat(chatDocId, chatType, participants, chatName);
     const chatData = (await chatRef.get()).data();
     startChat(chatDocId, chatName, chatPicUrl, chatData);
@@ -361,8 +338,8 @@ async function createOrGetChat(chatId, type, participants, chatName = null) {
             type: type,
             participants: participants,
             name: chatName,
-            ownerId: type === 'group' ? parseInt(localStorage.getItem('currentUserId')) : null,
-            admins: type === 'group' ? [parseInt(localStorage.getItem('currentUserId'))] : null,
+            ownerId: type === 'group' ? localStorage.getItem('currentUserId') : null,
+            admins: type === 'group' ? [localStorage.getItem('currentUserId')] : null,
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     }
@@ -378,7 +355,7 @@ function startChat(chatDocId, chatName, picUrl, chatData = null) {
     messageInput.value = '';
     sendMessageButton.disabled = false;
     
-    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const currentUserId = localStorage.getItem('currentUserId');
 
     if (chatData && chatData.type === 'group' && chatData.ownerId === currentUserId) {
         groupMenuDropdown.style.display = 'inline-block';
@@ -396,7 +373,7 @@ sendMessageButton.onclick = async () => {
         return;
     }
 
-    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const currentUserId = localStorage.getItem('currentUserId');
     const timestamp = firebase.firestore.FieldValue.serverTimestamp();
     const chatRef = db.collection('chats').doc(currentChatId);
 
@@ -435,7 +412,7 @@ function listenForMessages(chatId) {
 }
 
 function displayMessage(message) {
-    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const currentUserId = localStorage.getItem('currentUserId');
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message-bubble');
     messageBubble.classList.add(message.senderId == currentUserId ? 'sent' : 'received');
@@ -450,7 +427,7 @@ async function listenForChats() {
         unsubscribeChats();
     }
 
-    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const currentUserId = localStorage.getItem('currentUserId');
     const chatsRef = db.collection('chats');
 
     unsubscribeChats = chatsRef.where('participants', 'array-contains', currentUserId)
@@ -466,9 +443,9 @@ async function listenForChats() {
                 if (chatData.type === 'private') {
                     const partnerId = chatData.participants.find(id => id !== currentUserId);
                     if (partnerId) {
-                        const partnerDoc = await db.collection('users').where('userId', '==', partnerId).get();
-                        if (!partnerDoc.empty) {
-                            const partnerData = partnerDoc.docs[0].data();
+                        const partnerDoc = await db.collection('users').doc(partnerId).get();
+                        if (partnerDoc.exists) {
+                            const partnerData = partnerDoc.data();
                             chatName = partnerData.username;
                             chatPicUrl = partnerData.profilePictureUrl;
                         } else {
@@ -560,8 +537,40 @@ window.onclick = (event) => {
 };
 
 document.getElementById('add-user-to-group').onclick = () => {
-    alert("Kullanıcı Ekleme özelliği yakında eklenecek.");
+    if (currentChatId && currentChatData.type === 'group') {
+        addUserModal.style.display = 'block';
+    } else {
+        alert("Bu işlem sadece grup sohbetlerinde kullanılabilir.");
+    }
     groupMenu.style.display = 'none';
+};
+
+addUserToGroupButton.onclick = async () => {
+    const userIdToAdd = addUserIdInput.value.trim();
+    if (!userIdToAdd) {
+        alert("Lütfen bir kullanıcı ID'si girin.");
+        return;
+    }
+    
+    try {
+        const userDoc = await db.collection('users').doc(userIdToAdd).get();
+        if (!userDoc.exists) {
+            alert("Kullanıcı bulunamadı.");
+            return;
+        }
+
+        const chatRef = db.collection('chats').doc(currentChatId);
+        await chatRef.update({
+            participants: firebase.firestore.FieldValue.arrayUnion(userIdToAdd)
+        });
+        
+        alert("Kullanıcı gruba başarıyla eklendi!");
+        addUserModal.style.display = 'none';
+        addUserIdInput.value = '';
+    } catch (error) {
+        console.error("Kullanıcı ekleme hatası: ", error);
+        alert("Kullanıcı eklenirken bir hata oluştu.");
+    }
 };
 
 document.getElementById('remove-user-from-group').onclick = () => {
