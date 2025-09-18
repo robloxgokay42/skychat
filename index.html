@@ -31,6 +31,7 @@
                     <h3 id="current-user-username"></h3>
                     <p id="current-user-bio"></p>
                     <button id="create-chat-button">Mesaj Oluştur</button>
+                    <button id="create-group-button">Grup Kur</button>
                     <button onclick="deleteAccount()" class="delete-button">Hesabı Sil</button>
                 </div>
                 <div id="chat-list">
@@ -57,10 +58,11 @@
         <div id="create-chat-modal" class="modal" style="display: none;">
             <div class="modal-content">
                 <span class="close-button">&times;</span>
-                <h4>Yeni Sohbet Oluştur</h4>
-                <p>Mesajlaşmak istediğiniz kişinin ID'sini girin:</p>
-                <input type="text" id="target-id-input" placeholder="Kullanıcı ID'si (1000-5000)">
-                <button id="find-user-button">Kullanıcıyı Bul</button>
+                <h4 id="modal-title">Yeni Sohbet Oluştur</h4>
+                <p id="modal-info">Mesajlaşmak istediğiniz kişinin ID'sini girin:</p>
+                <input type="text" id="target-ids-input" placeholder="Kullanıcı ID'leri (örn: 1234, 5678)">
+                <input type="text" id="group-name-input" placeholder="Grup Adı" style="display: none;">
+                <button id="find-users-button">Kullanıcıları Bul</button>
                 <button id="start-chat-button" disabled>Sohbet Oluştur</button>
                 <div id="user-search-status"></div>
             </div>
