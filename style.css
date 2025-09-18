@@ -188,6 +188,7 @@ body {
     padding: 15px;
     border-bottom: 1px solid #ddd;
     background-color: #f9f9f9;
+    position: relative;
 }
 
 #chat-partner-profile-pic {
@@ -200,6 +201,42 @@ body {
 
 #chat-partner-username {
     margin: 0;
+    flex-grow: 1;
+}
+
+#group-menu-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #333;
+}
+
+#group-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    text-align: left;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
 }
 
 #chat-messages {
@@ -260,7 +297,6 @@ body {
     cursor: not-allowed;
 }
 
-/* Modal Stilleri */
 .modal {
     display: none;
     position: fixed;
