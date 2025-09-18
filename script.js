@@ -9,13 +9,11 @@ const firebaseConfig = {
     measurementId: "G-7YSVH37SGM"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Rastgele profil fotoğrafları için Imgur link listesi
 const profilePictureUrls = [
     "https://i.imgur.com/BDFeiYS.png",
     "https://i.imgur.com/NClcnsn.png",
@@ -23,7 +21,6 @@ const profilePictureUrls = [
     "https://i.imgur.com/BEOiE4Q.png",
 ];
 
-// HTML elementleri için değişkenler
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 const toggleAuthText = document.getElementById('toggle-auth-text');
@@ -52,6 +49,11 @@ const chatPartnerUsername = document.getElementById('chat-partner-username');
 const chatMessages = document.getElementById('chat-messages');
 const messageInput = document.getElementById('message-input');
 const sendMessageButton = document.getElementById('send-message-button');
+const chatListUl = document.getElementById('chat-list-ul');
+
+// Ana sohbet değişkenleri
+let currentChatPartnerId = null;
+let currentChatId = null;
 
 // Kullanıcı girişi/kaydı arasında geçiş yapma
 function toggleAuthForms() {
@@ -104,6 +106,7 @@ async function signupUser() {
 
         showApp();
         loadUserProfile();
+        listenForChats();
         alert("Kayıt başarılı! Hoş geldin, ID numaran: " + userId);
     } catch (error) {
         console.error("Kayıt sırasında hata oluştu: ", error);
@@ -137,6 +140,7 @@ async function loginUser() {
 
             showApp();
             loadUserProfile();
+            listenForChats();
             alert("Giriş başarılı!");
         }
     } catch (error) {
@@ -229,6 +233,7 @@ window.onload = async () => {
             
             showApp();
             loadUserProfile();
+            listenForChats();
         } else {
             localStorage.clear();
             location.reload();
@@ -259,13 +264,15 @@ window.onclick = (event) => {
 let foundUser = null;
 findUserButton.onclick = async () => {
     const targetId = parseInt(targetIdInput.value.trim());
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+
     if (isNaN(targetId)) {
         userSearchStatus.textContent = 'Lütfen geçerli bir ID girin.';
         startChatButton.disabled = true;
         return;
     }
 
-    if (targetId === parseInt(localStorage.getItem('currentUserId'))) {
+    if (targetId === currentUserId) {
         userSearchStatus.textContent = 'Kendi kendine mesaj atamazsın.';
         startChatButton.disabled = true;
         return;
@@ -301,47 +308,46 @@ startChatButton.onclick = () => {
             username: localStorage.getItem('currentUserUsername'),
             profilePic: localStorage.getItem('currentUserProfilePic')
         };
-        startChat(currentUser, foundUser);
+        const chatDocId = [currentUser.id, foundUser.userId].sort().join('_');
+        
+        startChat(chatDocId, foundUser.username, foundUser.profilePictureUrl);
         createChatModal.style.display = 'none';
     }
 };
 
-// Yeni sohbet başlatma ve mesajları dinleme fonksiyonu
-let currentChatPartnerId = null;
-function startChat(currentUser, partner) {
-    currentChatPartnerId = partner.userId;
-
-    chatPartnerUsername.textContent = partner.username;
-    chatPartnerProfilePic.src = partner.profilePictureUrl || 'https://via.placeholder.com/40';
+// Sohbet açma (hem yeni hem mevcut sohbetler için)
+function startChat(chatDocId, partnerUsername, partnerPicUrl) {
+    currentChatId = chatDocId;
+    chatPartnerUsername.textContent = partnerUsername;
+    chatPartnerProfilePic.src = partnerPicUrl || 'https://via.placeholder.com/40';
     chatMessages.innerHTML = '';
     messageInput.value = '';
     sendMessageButton.disabled = false;
+    
+    // Mobil uyumluluk: Sohbet ekranını görünür yap
+    document.getElementById('main-content').style.display = 'flex';
 
-    listenForMessages(currentUser.id, partner.userId);
+    listenForMessages(chatDocId);
 }
 
 // Mesaj gönderme
 sendMessageButton.onclick = async () => {
     const messageText = messageInput.value.trim();
-    if (messageText === '' || !currentChatPartnerId) {
+    if (messageText === '' || !currentChatId) {
         return;
     }
 
     const currentUserId = localStorage.getItem('currentUserId');
     const timestamp = firebase.firestore.FieldValue.serverTimestamp();
 
-    const chatDocId = [currentUserId, currentChatPartnerId].sort().join('_');
-    const chatRef = db.collection('chats').doc(chatDocId);
-
     const messageData = {
         senderId: currentUserId,
         text: messageText,
         createdAt: timestamp,
-        readBy: [currentUserId]
     };
 
     try {
-        await chatRef.collection('messages').add(messageData);
+        await db.collection('chats').doc(currentChatId).collection('messages').add(messageData);
         messageInput.value = '';
     } catch (error) {
         console.error("Mesaj gönderme hatası: ", error);
@@ -349,16 +355,18 @@ sendMessageButton.onclick = async () => {
 };
 
 // Mesajları dinleme ve ekrana basma
-function listenForMessages(currentUserId, partnerId) {
-    const chatDocId = [currentUserId, partnerId].sort().join('_');
-    const messagesRef = db.collection('chats').doc(chatDocId).collection('messages').orderBy('createdAt');
+let unsubscribeMessages = null;
+function listenForMessages(chatId) {
+    if (unsubscribeMessages) {
+        unsubscribeMessages();
+    }
 
-    messagesRef.onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-                const message = change.doc.data();
-                displayMessage(message);
-            }
+    const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('createdAt');
+    unsubscribeMessages = messagesRef.onSnapshot((snapshot) => {
+        chatMessages.innerHTML = '';
+        snapshot.docs.forEach(doc => {
+            const message = doc.data();
+            displayMessage(message);
         });
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
@@ -373,4 +381,77 @@ function displayMessage(message) {
 
     messageBubble.textContent = message.text;
     chatMessages.appendChild(messageBubble);
+}
+
+// Gelen ve giden sohbetleri dinle
+let unsubscribeChats = null;
+function listenForChats() {
+    if (unsubscribeChats) {
+        unsubscribeChats();
+    }
+
+    const currentUserId = localStorage.getItem('currentUserId');
+    const chatsRef = db.collection('chats');
+
+    unsubscribeChats = chatsRef.where('participants', 'array-contains', parseInt(currentUserId))
+        .onSnapshot(async (snapshot) => {
+            chatListUl.innerHTML = '';
+            for (const doc of snapshot.docs) {
+                const chatData = doc.data();
+                const partnerId = chatData.participants.find(id => id !== parseInt(currentUserId));
+                
+                const partnerDoc = await db.collection('users').where('userId', '==', partnerId).get();
+                if (!partnerDoc.empty) {
+                    const partnerData = partnerDoc.docs[0].data();
+                    displayChatItem(doc.id, partnerData.username, partnerData.profilePictureUrl);
+                }
+            }
+        });
+}
+
+// Sohbet listesi öğelerini ekrana basma
+function displayChatItem(chatId, username, picUrl) {
+    const listItem = document.createElement('li');
+    listItem.onclick = () => {
+        startChat(chatId, username, picUrl);
+    };
+
+    const img = document.createElement('img');
+    img.src = picUrl || 'https://via.placeholder.com/40';
+    img.classList.add('chat-item-pic');
+
+    const infoDiv = document.createElement('div');
+    infoDiv.classList.add('chat-item-info');
+    infoDiv.innerHTML = `<strong>${username}</strong>`;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'x';
+    deleteBtn.classList.add('chat-item-delete');
+    deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (confirm(`"${username}" ile olan sohbeti silmek istediğinizden emin misiniz?`)) {
+            await deleteChat(chatId);
+        }
+    };
+
+    listItem.appendChild(img);
+    listItem.appendChild(infoDiv);
+    listItem.appendChild(deleteBtn);
+    chatListUl.appendChild(listItem);
+}
+
+// Sohbet silme
+async function deleteChat(chatId) {
+    try {
+        await db.collection('chats').doc(chatId).delete();
+        // Sohbeti sildikten sonra ana ekranı temizle
+        chatPartnerUsername.textContent = '';
+        chatPartnerProfilePic.src = '';
+        chatMessages.innerHTML = '';
+        sendMessageButton.disabled = true;
+        alert("Sohbet başarıyla silindi.");
+    } catch (error) {
+        console.error("Sohbet silme hatası: ", error);
+        alert("Sohbet silinirken bir hata oluştu.");
+    }
 }
