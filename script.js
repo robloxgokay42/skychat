@@ -55,15 +55,13 @@ const messageInput = document.getElementById('message-input');
 const sendMessageButton = document.getElementById('send-message-button');
 const chatListUl = document.getElementById('chat-list-ul');
 
-const groupMenuContainer = document.getElementById('group-menu-container');
-const groupMenuButton = document.getElementById('group-menu-button');
-const groupMenu = document.getElementById('group-menu');
+const groupMenuDropdown = document.getElementById('group-menu-dropdown');
+const groupMenu = groupMenuDropdown.querySelector('.dropdown-content');
 
-let currentChatPartnerId = null;
 let currentChatId = null;
-let chatType = 'private';
+let chatType = null;
 let foundUsers = [];
-let currentChatData = null; // Aktif sohbetin verilerini tutar
+let currentChatData = null;
 
 function toggleAuthForms() {
     loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
@@ -324,12 +322,16 @@ startChatButton.onclick = async () => {
         return;
     }
 
+    let chatDocId;
+    let chatName;
+    let chatPicUrl;
+
     if (chatType === 'private') {
         const partner = foundUsers.find(user => user.userId !== parseInt(localStorage.getItem('currentUserId')));
         if (partner) {
-            const chatDocId = [localStorage.getItem('currentUserId'), partner.userId].sort().join('_');
-            await createOrGetChat(chatDocId, 'private', [parseInt(localStorage.getItem('currentUserId')), partner.userId]);
-            startChat(chatDocId, partner.username, partner.profilePictureUrl);
+            chatDocId = [localStorage.getItem('currentUserId'), partner.userId].sort().join('_');
+            chatName = partner.username;
+            chatPicUrl = partner.profilePictureUrl;
         }
     } else if (chatType === 'group') {
         const groupName = groupNameInput.value.trim();
@@ -337,12 +339,16 @@ startChatButton.onclick = async () => {
             alert("Grup adı boş olamaz!");
             return;
         }
-        const participants = foundUsers.map(user => user.userId);
-        const chatId = `group_${Date.now()}`;
-        
-        await createOrGetChat(chatId, 'group', participants, groupName);
-        startChat(chatId, groupName, 'https://via.placeholder.com/40');
+        chatDocId = `group_${Date.now()}`;
+        chatName = groupName;
+        chatPicUrl = 'https://via.placeholder.com/40';
     }
+    
+    const participants = foundUsers.map(user => user.userId);
+    const chatRef = await createOrGetChat(chatDocId, chatType, participants, chatName);
+    const chatData = (await chatRef.get()).data();
+    startChat(chatDocId, chatName, chatPicUrl, chatData);
+
     createChatModal.style.display = 'none';
 };
 
@@ -360,27 +366,27 @@ async function createOrGetChat(chatId, type, participants, chatName = null) {
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     }
-    return chatId;
+    return chatRef;
 }
 
 function startChat(chatDocId, chatName, picUrl, chatData = null) {
     currentChatId = chatDocId;
-    currentChatData = chatData; // Aktif sohbetin verilerini sakla
+    currentChatData = chatData;
     chatPartnerUsername.textContent = chatName;
     chatPartnerProfilePic.src = picUrl || 'https://via.placeholder.com/40';
     chatMessages.innerHTML = '';
     messageInput.value = '';
     sendMessageButton.disabled = false;
     
-    // Grup menüsünü göster veya gizle
-    if (chatData && chatData.type === 'group') {
-        groupMenuContainer.style.display = 'block';
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+
+    if (chatData && chatData.type === 'group' && chatData.ownerId === currentUserId) {
+        groupMenuDropdown.style.display = 'inline-block';
     } else {
-        groupMenuContainer.style.display = 'none';
+        groupMenuDropdown.style.display = 'none';
     }
 
     document.getElementById('main-content').style.display = 'flex';
-
     listenForMessages(chatDocId);
 }
 
@@ -498,7 +504,7 @@ function displayChatItem(chatId, chatName, picUrl, chatData) {
     infoDiv.innerHTML = `<strong>${chatName}</strong>`;
 
     const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'x';
+    deleteBtn.innerHTML = '&#x1F5D1;';
     deleteBtn.classList.add('chat-item-delete');
     deleteBtn.onclick = async (e) => {
         e.stopPropagation();
@@ -529,7 +535,7 @@ async function deleteChat(chatId) {
         chatPartnerProfilePic.src = '';
         chatMessages.innerHTML = '';
         sendMessageButton.disabled = true;
-        groupMenuContainer.style.display = 'none';
+        groupMenuDropdown.style.display = 'none';
         alert("Sohbet başarıyla silindi.");
     } catch (error) {
         console.error("Sohbet silme hatası: ", error);
@@ -537,14 +543,12 @@ async function deleteChat(chatId) {
     }
 }
 
-// Grup menüsü butonuna tıklama
-groupMenuButton.onclick = () => {
+groupMenuDropdown.querySelector('.dropbtn').onclick = () => {
     groupMenu.style.display = groupMenu.style.display === 'block' ? 'none' : 'block';
 };
 
-// Sayfanın herhangi bir yerine tıklayınca menüyü kapat
 window.onclick = (event) => {
-    if (!event.target.matches('#group-menu-button')) {
+    if (!event.target.matches('.dropbtn')) {
         const dropdowns = document.getElementsByClassName("dropdown-content");
         for (let i = 0; i < dropdowns.length; i++) {
             const openDropdown = dropdowns[i];
@@ -555,7 +559,6 @@ window.onclick = (event) => {
     }
 };
 
-// Grup yönetimi fonksiyonları için yer tutucular
 document.getElementById('add-user-to-group').onclick = () => {
     alert("Kullanıcı Ekleme özelliği yakında eklenecek.");
     groupMenu.style.display = 'none';
