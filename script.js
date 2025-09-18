@@ -55,9 +55,15 @@ const messageInput = document.getElementById('message-input');
 const sendMessageButton = document.getElementById('send-message-button');
 const chatListUl = document.getElementById('chat-list-ul');
 
+const groupMenuContainer = document.getElementById('group-menu-container');
+const groupMenuButton = document.getElementById('group-menu-button');
+const groupMenu = document.getElementById('group-menu');
+
 let currentChatPartnerId = null;
 let currentChatId = null;
 let chatType = 'private';
+let foundUsers = [];
+let currentChatData = null; // Aktif sohbetin verilerini tutar
 
 function toggleAuthForms() {
     loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
@@ -273,7 +279,6 @@ window.onclick = (event) => {
     }
 };
 
-let foundUsers = [];
 findUsersButton.onclick = async () => {
     const currentUserId = parseInt(localStorage.getItem('currentUserId'));
     const targetIds = targetIdsInput.value.trim().split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
@@ -350,20 +355,30 @@ async function createOrGetChat(chatId, type, participants, chatName = null) {
             type: type,
             participants: participants,
             name: chatName,
+            ownerId: type === 'group' ? parseInt(localStorage.getItem('currentUserId')) : null,
+            admins: type === 'group' ? [parseInt(localStorage.getItem('currentUserId'))] : null,
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     }
     return chatId;
 }
 
-function startChat(chatDocId, chatName, picUrl) {
+function startChat(chatDocId, chatName, picUrl, chatData = null) {
     currentChatId = chatDocId;
+    currentChatData = chatData; // Aktif sohbetin verilerini sakla
     chatPartnerUsername.textContent = chatName;
     chatPartnerProfilePic.src = picUrl || 'https://via.placeholder.com/40';
     chatMessages.innerHTML = '';
     messageInput.value = '';
     sendMessageButton.disabled = false;
     
+    // Grup menüsünü göster veya gizle
+    if (chatData && chatData.type === 'group') {
+        groupMenuContainer.style.display = 'block';
+    } else {
+        groupMenuContainer.style.display = 'none';
+    }
+
     document.getElementById('main-content').style.display = 'flex';
 
     listenForMessages(chatDocId);
@@ -459,19 +474,19 @@ async function listenForChats() {
                     chatPicUrl = 'https://via.placeholder.com/40';
                 }
 
-                displayChatItem(doc.id, chatName, chatPicUrl);
+                displayChatItem(doc.id, chatName, chatPicUrl, chatData);
             }
         });
 }
 
-function displayChatItem(chatId, chatName, picUrl) {
+function displayChatItem(chatId, chatName, picUrl, chatData) {
     const listItem = document.createElement('li');
     listItem.onclick = () => {
         const mainContent = document.getElementById('main-content');
         if (window.innerWidth <= 768) {
              mainContent.style.display = 'flex';
         }
-        startChat(chatId, chatName, picUrl);
+        startChat(chatId, chatName, picUrl, chatData);
     };
 
     const img = document.createElement('img');
@@ -514,9 +529,54 @@ async function deleteChat(chatId) {
         chatPartnerProfilePic.src = '';
         chatMessages.innerHTML = '';
         sendMessageButton.disabled = true;
+        groupMenuContainer.style.display = 'none';
         alert("Sohbet başarıyla silindi.");
     } catch (error) {
         console.error("Sohbet silme hatası: ", error);
         alert("Sohbet silinirken bir hata oluştu.");
     }
 }
+
+// Grup menüsü butonuna tıklama
+groupMenuButton.onclick = () => {
+    groupMenu.style.display = groupMenu.style.display === 'block' ? 'none' : 'block';
+};
+
+// Sayfanın herhangi bir yerine tıklayınca menüyü kapat
+window.onclick = (event) => {
+    if (!event.target.matches('#group-menu-button')) {
+        const dropdowns = document.getElementsByClassName("dropdown-content");
+        for (let i = 0; i < dropdowns.length; i++) {
+            const openDropdown = dropdowns[i];
+            if (openDropdown.style.display === 'block') {
+                openDropdown.style.display = 'none';
+            }
+        }
+    }
+};
+
+// Grup yönetimi fonksiyonları için yer tutucular
+document.getElementById('add-user-to-group').onclick = () => {
+    alert("Kullanıcı Ekleme özelliği yakında eklenecek.");
+    groupMenu.style.display = 'none';
+};
+
+document.getElementById('remove-user-from-group').onclick = () => {
+    alert("Kullanıcı Atma özelliği yakında eklenecek.");
+    groupMenu.style.display = 'none';
+};
+
+document.getElementById('manage-permissions').onclick = () => {
+    alert("Üye İzinleri ayarlama özelliği yakında eklenecek.");
+    groupMenu.style.display = 'none';
+};
+
+document.getElementById('make-admin').onclick = () => {
+    alert("Yönetici Yapma özelliği yakında eklenecek.");
+    groupMenu.style.display = 'none';
+};
+
+document.getElementById('transfer-ownership').onclick = () => {
+    alert("Grup sahipliğini devretme özelliği yakında eklenecek.");
+    groupMenu.style.display = 'none';
+};
