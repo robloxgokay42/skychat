@@ -12,27 +12,57 @@
             <h2>SkyChat'e Hoş Geldiniz!</h2>
             <div id="login-form">
                 <h3>Giriş Yap</h3>
-                <input type="text" id="login-username" placeholder="Kullanıcı Adı (ID)">
+                <input type="text" id="login-username" placeholder="Kullanıcı Adı">
                 <button onclick="loginUser()">Giriş Yap</button>
             </div>
             <div id="signup-form" style="display: none;">
                 <h3>Kayıt Ol</h3>
-                <input type="text" id="signup-username" placeholder="Kullanıcı Adı (ID)">
+                <input type="text" id="signup-username" placeholder="Kullanıcı Adı">
                 <input type="text" id="signup-bio" placeholder="Biyografi">
-                <input type="file" id="signup-profile-pic" accept="image/*">
                 <button onclick="signupUser()">Kayıt Ol</button>
             </div>
             <p id="toggle-auth-text" onclick="toggleAuthForms()">Hesabın yok mu? Kayıt ol!</p>
         </div>
 
         <div id="app-container" style="display: none;">
-            <div id="profile-section">
-                <img id="current-user-profile-pic" src="" alt="Profil Fotoğrafı">
-                <h3 id="current-user-username"></h3>
-                <p id="current-user-bio"></p>
+            <div id="sidebar">
+                <div id="profile-section">
+                    <img id="current-user-profile-pic" src="" alt="Profil Fotoğrafı">
+                    <h3 id="current-user-username"></h3>
+                    <p id="current-user-bio"></p>
+                    <button id="create-chat-button">Mesaj Oluştur</button>
+                    <button onclick="deleteAccount()" class="delete-button">Hesabı Sil</button>
+                </div>
+                <div id="chat-list">
+                    <h4>Sohbetlerim</h4>
+                    <ul id="chat-list-ul">
+                        </ul>
+                </div>
             </div>
-            <div id="chat-section">
-                <p>Sohbet alanı henüz eklenmedi.</p>
+
+            <div id="main-content">
+                <div id="chat-header">
+                    <img id="chat-partner-profile-pic" src="" alt="Karşı Tarafın Fotoğrafı">
+                    <h3 id="chat-partner-username"></h3>
+                </div>
+                <div id="chat-messages">
+                    </div>
+                <div id="message-input-area">
+                    <input type="text" id="message-input" placeholder="Bir mesaj yazın...">
+                    <button id="send-message-button" disabled>Gönder</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="create-chat-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h4>Yeni Sohbet Oluştur</h4>
+                <p>Mesajlaşmak istediğiniz kişinin ID'sini girin:</p>
+                <input type="text" id="target-id-input" placeholder="Kullanıcı ID'si (1000-5000)">
+                <button id="find-user-button">Kullanıcıyı Bul</button>
+                <button id="start-chat-button" disabled>Sohbet Oluştur</button>
+                <div id="user-search-status"></div>
             </div>
         </div>
     </div>
