@@ -56,14 +56,12 @@ async function signupUser() {
     }
 
     try {
-        // Kullanıcı adı zaten kullanılıyor mu kontrol et
         const userDoc = await db.collection('users').where('username', '==', username).get();
         if (!userDoc.empty) {
             alert("Bu kullanıcı adı zaten kullanılıyor!");
             return;
         }
 
-        // Benzersiz ID oluşturma (1000-5000 arası)
         let userId;
         let isIdUsed = true;
         while (isIdUsed) {
@@ -74,10 +72,8 @@ async function signupUser() {
             }
         }
 
-        // Rastgele profil fotoğrafı seçimi
         const randomPicUrl = profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)];
 
-        // Firestore'a kullanıcı bilgilerini kaydetme
         await db.collection('users').add({
             userId: userId,
             username: username,
@@ -86,7 +82,6 @@ async function signupUser() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Kayıt başarılı, kullanıcıyı otomatik olarak giriş yaptır
         localStorage.setItem('currentUserUsername', username);
         localStorage.setItem('currentUserBio', bio);
         localStorage.setItem('currentUserProfilePic', randomPicUrl);
@@ -121,7 +116,6 @@ async function loginUser() {
             const userData = querySnapshot.docs[0].data();
             const userId = userData.userId;
 
-            // Başarılı giriş
             localStorage.setItem('currentUserUsername', username);
             localStorage.setItem('currentUserBio', userData.bio);
             localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
@@ -151,8 +145,10 @@ function loadUserProfile() {
     const userId = localStorage.getItem('currentUserId');
 
     if (username) {
+        // ID varsa göster, yoksa gösterme
         currentUserUsername.textContent = username + (userId ? ' (ID: ' + userId + ')' : '');
         currentUserBio.textContent = bio || "Biyografim";
+        // Profil fotoğrafı varsa göster, yoksa varsayılanı kullan
         currentUserProfilePic.src = profilePicUrl || 'https://via.placeholder.com/80';
     }
 }
@@ -184,22 +180,49 @@ async function deleteAccount() {
     }
 }
 
-// Uygulama başladığında kontrol et
+// Uygulama başladığında ve sayfa yenilendiğinde
 window.onload = async () => {
     const username = localStorage.getItem('currentUserUsername');
+    
     if (username) {
         const usersRef = db.collection('users');
         const querySnapshot = await usersRef.where('username', '==', username).limit(1).get();
 
         if (!querySnapshot.empty) {
             const userData = querySnapshot.docs[0].data();
-            localStorage.setItem('currentUserId', userData.userId);
-            localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
-            localStorage.setItem('currentUserBio', userData.bio);
+            
+            // Eğer ID yoksa, ID ve profil fotoğrafı oluştur ve veritabanını güncelle
+            if (!userData.userId) {
+                let newUserId;
+                let isIdUsed = true;
+                while (isIdUsed) {
+                    newUserId = Math.floor(Math.random() * (5000 - 1000 + 1)) + 1000;
+                    const idDoc = await db.collection('users').where('userId', '==', newUserId).get();
+                    if (idDoc.empty) {
+                        isIdUsed = false;
+                    }
+                }
+                const newPicUrl = profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)];
+
+                // Veritabanını güncelle
+                await querySnapshot.docs[0].ref.update({
+                    userId: newUserId,
+                    profilePictureUrl: newPicUrl
+                });
+
+                // localStorage'ı güncelle
+                localStorage.setItem('currentUserId', newUserId);
+                localStorage.setItem('currentUserProfilePic', newPicUrl);
+            } else {
+                // Eğer ID varsa, localStorage'ı veritabanındaki bilgilerle güncelle
+                localStorage.setItem('currentUserId', userData.userId);
+                localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
+            }
             
             showApp();
             loadUserProfile();
         } else {
+            // Kullanıcı veritabanından silinmişse, localStorage'ı temizle
             localStorage.clear();
             location.reload();
         }
