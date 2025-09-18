@@ -90,7 +90,18 @@ async function signupUser() {
             return;
         }
 
-        const newUserRef = await db.collection('users').add({
+        let userId;
+        let isIdUsed = true;
+        while (isIdUsed) {
+            userId = Math.floor(Math.random() * (5000 - 1000 + 1)) + 1000;
+            const idDoc = await db.collection('users').where('userId', '==', userId).get();
+            if (idDoc.empty) {
+                isIdUsed = false;
+            }
+        }
+
+        await db.collection('users').add({
+            userId: userId,
             username: username,
             bio: bio,
             profilePictureUrl: profilePictureUrls[Math.floor(Math.random() * profilePictureUrls.length)],
@@ -99,13 +110,13 @@ async function signupUser() {
 
         localStorage.setItem('currentUserUsername', username);
         localStorage.setItem('currentUserBio', bio);
-        localStorage.setItem('currentUserProfilePic', (await newUserRef.get()).data().profilePictureUrl);
-        localStorage.setItem('currentUserId', newUserRef.id);
+        localStorage.setItem('currentUserProfilePic', (await db.collection('users').where('userId', '==', userId).get()).docs[0].data().profilePictureUrl);
+        localStorage.setItem('currentUserId', userId);
 
         showApp();
         loadUserProfile();
         listenForChats();
-        alert("Kayıt başarılı! Hoş geldin, ID'n: " + newUserRef.id);
+        alert("Kayıt başarılı! Hoş geldin, ID numaran: " + userId);
     } catch (error) {
         console.error("Kayıt sırasında hata oluştu: ", error);
         alert("Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.");
@@ -127,9 +138,8 @@ async function loginUser() {
         if (querySnapshot.empty) {
             alert("Kullanıcı bulunamadı. Lütfen kayıt olun.");
         } else {
-            const userDoc = querySnapshot.docs[0];
-            const userData = userDoc.data();
-            const userId = userDoc.id; // Firestore belge kimliğini kullanıyoruz.
+            const userData = querySnapshot.docs[0].data();
+            const userId = userData.userId;
 
             localStorage.setItem('currentUserUsername', username);
             localStorage.setItem('currentUserBio', userData.bio);
@@ -174,10 +184,16 @@ async function deleteAccount() {
 
     if (confirm("Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
         try {
-            await db.collection('users').doc(userId).delete();
-            localStorage.clear();
-            location.reload();
-            alert("Hesabınız başarıyla silindi.");
+            const usersRef = db.collection('users');
+            const querySnapshot = await usersRef.where('userId', '==', parseInt(userId)).get();
+
+            if (!querySnapshot.empty) {
+                const userDocId = querySnapshot.docs[0].id;
+                await db.collection('users').doc(userDocId).delete();
+                localStorage.clear();
+                location.reload();
+                alert("Hesabınız başarıyla silindi.");
+            }
         } catch (error) {
             console.error("Hesap silinirken hata oluştu: ", error);
             alert("Hesap silinirken bir hata oluştu.");
@@ -186,16 +202,17 @@ async function deleteAccount() {
 }
 
 window.onload = async () => {
+    const username = localStorage.getItem('currentUserUsername');
     const userId = localStorage.getItem('currentUserId');
     
-    if (userId) {
+    if (username && userId) {
         try {
-            const userDoc = await db.collection('users').doc(userId).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                localStorage.setItem('currentUserUsername', userData.username);
-                localStorage.setItem('currentUserBio', userData.bio);
-                localStorage.setItem('currentUserProfilePic', userData.profilePictureUrl);
+            const usersRef = db.collection('users');
+            const querySnapshot = await usersRef.where('userId', '==', parseInt(userId)).limit(1).get();
+
+            if (!querySnapshot.empty) {
+                const userData = querySnapshot.docs[0].data();
+                
                 showApp();
                 loadUserProfile();
                 listenForChats();
@@ -254,8 +271,8 @@ addUserCloseButton.onclick = () => {
 };
 
 findUsersButton.onclick = async () => {
-    const currentUserId = localStorage.getItem('currentUserId');
-    const targetIds = targetIdsInput.value.trim().split(',').map(id => id.trim()).filter(id => id);
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const targetIds = targetIdsInput.value.trim().split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
 
     if (targetIds.length === 0) {
         userSearchStatus.textContent = 'Lütfen geçerli ID\'ler girin.';
@@ -276,10 +293,10 @@ findUsersButton.onclick = async () => {
 
     try {
         const usersRef = db.collection('users');
-        const querySnapshot = await usersRef.where(firebase.firestore.FieldPath.documentId(), 'in', allIds).get();
+        const querySnapshot = await usersRef.where('userId', 'in', allIds).get();
 
         if (querySnapshot.docs.length === allIds.length) {
-            foundUsers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            foundUsers = querySnapshot.docs.map(doc => doc.data());
             userSearchStatus.textContent = 'Tüm kullanıcılar bulundu!';
             startChatButton.disabled = false;
         } else {
@@ -301,12 +318,12 @@ startChatButton.onclick = async () => {
     let chatDocId;
     let chatName;
     let chatPicUrl;
-    const currentUserId = localStorage.getItem('currentUserId');
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
 
     if (chatType === 'private') {
-        const partner = foundUsers.find(user => user.id !== currentUserId);
+        const partner = foundUsers.find(user => user.userId !== currentUserId);
         if (partner) {
-            chatDocId = [currentUserId, partner.id].sort().join('_');
+            chatDocId = [currentUserId, partner.userId].sort().join('_');
             chatName = partner.username;
             chatPicUrl = partner.profilePictureUrl;
         }
@@ -321,7 +338,7 @@ startChatButton.onclick = async () => {
         chatPicUrl = 'https://via.placeholder.com/40';
     }
     
-    const participants = foundUsers.map(user => user.id);
+    const participants = foundUsers.map(user => user.userId);
     const chatRef = await createOrGetChat(chatDocId, chatType, participants, chatName);
     const chatData = (await chatRef.get()).data();
     startChat(chatDocId, chatName, chatPicUrl, chatData);
@@ -338,8 +355,8 @@ async function createOrGetChat(chatId, type, participants, chatName = null) {
             type: type,
             participants: participants,
             name: chatName,
-            ownerId: type === 'group' ? localStorage.getItem('currentUserId') : null,
-            admins: type === 'group' ? [localStorage.getItem('currentUserId')] : null,
+            ownerId: type === 'group' ? parseInt(localStorage.getItem('currentUserId')) : null,
+            admins: type === 'group' ? [parseInt(localStorage.getItem('currentUserId'))] : null,
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     }
@@ -355,7 +372,7 @@ function startChat(chatDocId, chatName, picUrl, chatData = null) {
     messageInput.value = '';
     sendMessageButton.disabled = false;
     
-    const currentUserId = localStorage.getItem('currentUserId');
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
 
     if (chatData && chatData.type === 'group' && chatData.ownerId === currentUserId) {
         groupMenuDropdown.style.display = 'inline-block';
@@ -373,7 +390,7 @@ sendMessageButton.onclick = async () => {
         return;
     }
 
-    const currentUserId = localStorage.getItem('currentUserId');
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
     const timestamp = firebase.firestore.FieldValue.serverTimestamp();
     const chatRef = db.collection('chats').doc(currentChatId);
 
@@ -411,23 +428,13 @@ function listenForMessages(chatId) {
     });
 }
 
-function displayMessage(message) {
-    const currentUserId = localStorage.getItem('currentUserId');
-    const messageBubble = document.createElement('div');
-    messageBubble.classList.add('message-bubble');
-    messageBubble.classList.add(message.senderId == currentUserId ? 'sent' : 'received');
-
-    messageBubble.textContent = message.text;
-    chatMessages.appendChild(messageBubble);
-}
-
 let unsubscribeChats = null;
 async function listenForChats() {
     if (unsubscribeChats) {
         unsubscribeChats();
     }
 
-    const currentUserId = localStorage.getItem('currentUserId');
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
     const chatsRef = db.collection('chats');
 
     unsubscribeChats = chatsRef.where('participants', 'array-contains', currentUserId)
@@ -443,9 +450,9 @@ async function listenForChats() {
                 if (chatData.type === 'private') {
                     const partnerId = chatData.participants.find(id => id !== currentUserId);
                     if (partnerId) {
-                        const partnerDoc = await db.collection('users').doc(partnerId).get();
-                        if (partnerDoc.exists) {
-                            const partnerData = partnerDoc.data();
+                        const partnerDoc = await db.collection('users').where('userId', '==', partnerId).get();
+                        if (!partnerDoc.empty) {
+                            const partnerData = partnerDoc.docs[0].data();
                             chatName = partnerData.username;
                             chatPicUrl = partnerData.profilePictureUrl;
                         } else {
@@ -520,6 +527,16 @@ async function deleteChat(chatId) {
     }
 }
 
+function displayMessage(message) {
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const messageBubble = document.createElement('div');
+    messageBubble.classList.add('message-bubble');
+    messageBubble.classList.add(message.senderId == currentUserId ? 'sent' : 'received');
+
+    messageBubble.textContent = message.text;
+    chatMessages.appendChild(messageBubble);
+}
+
 groupMenuDropdown.querySelector('.dropbtn').onclick = () => {
     groupMenu.style.display = groupMenu.style.display === 'block' ? 'none' : 'block';
 };
@@ -546,15 +563,15 @@ document.getElementById('add-user-to-group').onclick = () => {
 };
 
 addUserToGroupButton.onclick = async () => {
-    const userIdToAdd = addUserIdInput.value.trim();
-    if (!userIdToAdd) {
-        alert("Lütfen bir kullanıcı ID'si girin.");
+    const userIdToAdd = parseInt(addUserIdInput.value.trim());
+    if (isNaN(userIdToAdd)) {
+        alert("Lütfen geçerli bir kullanıcı ID'si girin.");
         return;
     }
     
     try {
-        const userDoc = await db.collection('users').doc(userIdToAdd).get();
-        if (!userDoc.exists) {
+        const userDoc = await db.collection('users').where('userId', '==', userIdToAdd).get();
+        if (userDoc.empty) {
             alert("Kullanıcı bulunamadı.");
             return;
         }
