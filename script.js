@@ -282,6 +282,7 @@ closeButton.onclick = () => {
 mediaCloseButton.onclick = () => {
     mediaPreviewModal.style.display = 'none';
     uploadedFile = null;
+    fileUpload.value = ''; // Dosya inputunu sıfırla
 };
 
 window.onclick = (event) => {
@@ -294,6 +295,7 @@ window.onclick = (event) => {
     if (event.target == mediaPreviewModal) {
         mediaPreviewModal.style.display = 'none';
         uploadedFile = null;
+        fileUpload.value = ''; // Dosya inputunu sıfırla
     }
 };
 
@@ -727,7 +729,7 @@ document.addEventListener('click', (e) => {
     if (e.target.matches('.message-bubble a')) {
         e.preventDefault();
         const url = e.target.getAttribute('data-url');
-        const isConfirmed = confirm('Bu bağlantıyı açmak istediğinizden emin misin?\n\n' + url);
+        const isConfirmed = confirm('Bu bağlantıyı açmak istediğinden emin misin?\n\n' + url);
         if (isConfirmed) {
             window.open(url, '_blank');
         }
