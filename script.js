@@ -80,6 +80,7 @@ let chatType = null;
 let foundUsers = [];
 let currentChatData = null;
 let uploadedFile = null;
+let usersInChatCache = {};
 
 function toggleAuthForms() {
     loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
@@ -534,25 +535,29 @@ sendMediaButton.onclick = async () => {
 };
 
 let unsubscribeMessages = null;
-function listenForMessages(chatId) {
+async function listenForMessages(chatId) {
     if (unsubscribeMessages) {
         unsubscribeMessages();
     }
 
+    chatMessages.innerHTML = '';
+    usersInChatCache = {};
+
     const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('createdAt');
     unsubscribeMessages = messagesRef.onSnapshot(async (snapshot) => {
-        chatMessages.innerHTML = '';
-        const usersInChat = {};
-        for (const messageDoc of snapshot.docs) {
-            const message = messageDoc.data();
-            if (!usersInChat[message.senderId]) {
-                const userDoc = await db.collection('users').where('userId', '==', message.senderId).get();
-                if (!userDoc.empty) {
-                    usersInChat[message.senderId] = userDoc.docs[0].data();
+        snapshot.docChanges().forEach(async (change) => {
+            if (change.type === "added") {
+                const message = change.doc.data();
+                const senderId = message.senderId;
+                if (!usersInChatCache[senderId]) {
+                    const userDoc = await db.collection('users').where('userId', '==', senderId).get();
+                    if (!userDoc.empty) {
+                        usersInChatCache[senderId] = userDoc.docs[0].data();
+                    }
                 }
+                displayMessage(message, usersInChatCache[senderId]);
             }
-            displayMessage(message, usersInChat[message.senderId]);
-        }
+        });
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 }
