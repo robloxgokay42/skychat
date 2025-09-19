@@ -290,6 +290,7 @@ body {
 }
 
 .chat-header .back-button {
+    display: none; /* Bu butonu varsayılan olarak gizliyoruz */
     background: none;
     border: none;
     font-size: 1.5em;
@@ -509,12 +510,16 @@ body {
     background-color: #f1f1f1;
 }
 
-/* Responsive Tasarım */
+/* Mobil Görünüm için Medya Sorgusu */
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
         height: 100vh;
         border-radius: 0;
+    }
+
+    #app-container {
+        flex-direction: column;
     }
 
     .sidebar {
@@ -525,15 +530,10 @@ body {
         border-bottom: 1px solid #34495e;
     }
 
-    #app-container {
-        flex-direction: column;
-    }
-
     #main-content {
-        display: none;
         height: calc(100vh - 100px);
     }
-
+    
     .chat-header .back-button {
         display: block;
     }
@@ -548,12 +548,22 @@ body {
         flex: 1 1 45%;
         margin: 5px;
     }
-
+    
     .user-profile {
         justify-content: center;
     }
-
+    
     .chat-list ul li {
         padding: 10px;
+    }
+
+    /* Eğer bir sohbet açıldıysa sidebar'ı gizle */
+    #app-container.chat-open .sidebar {
+        display: none;
+    }
+    
+    /* Eğer bir sohbet açıldıysa ana içeriği göster */
+    #app-container.chat-open #main-content {
+        display: flex;
     }
 }
