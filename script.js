@@ -282,7 +282,7 @@ closeButton.onclick = () => {
 mediaCloseButton.onclick = () => {
     mediaPreviewModal.style.display = 'none';
     uploadedFile = null;
-    fileUpload.value = ''; // Dosya inputunu sıfırla
+    fileUpload.value = '';
 };
 
 window.onclick = (event) => {
@@ -295,7 +295,7 @@ window.onclick = (event) => {
     if (event.target == mediaPreviewModal) {
         mediaPreviewModal.style.display = 'none';
         uploadedFile = null;
-        fileUpload.value = ''; // Dosya inputunu sıfırla
+        fileUpload.value = '';
     }
 };
 
@@ -499,36 +499,44 @@ sendMediaButton.onclick = async () => {
         const storageRef = storage.ref(`chat_files/${currentChatId}/${Date.now()}_${uploadedFile.name}`);
         const uploadTask = storageRef.put(uploadedFile);
 
-        uploadTask.on('state_changed', (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log('Upload is ' + progress + '% done');
-            // İsteğe bağlı olarak progress bar eklenebilir.
-        }, (error) => {
-            console.error("Yükleme hatası: ", error);
-            alert("Dosya yüklenirken bir hata oluştu.");
-        }, async () => {
-            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-            const fileType = uploadedFile.type.split('/')[0];
-            
-            const messageData = {
-                senderId: currentUserId,
-                text: downloadURL,
-                type: fileType,
-                fileName: uploadedFile.name,
-                createdAt: timestamp,
-            };
+        // Upload Task durumunu izle
+        uploadTask.on('state_changed', 
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                console.log('Upload is ' + progress + '% done');
+                // İsteğe bağlı olarak bir progress bar güncellenebilir
+            }, 
+            (error) => {
+                console.error("Yükleme hatası: ", error);
+                alert("Dosya yüklenirken bir hata oluştu.");
+                uploadedFile = null;
+                mediaPreviewModal.style.display = 'none';
+                fileUpload.value = '';
+            }, 
+            async () => {
+                const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                const fileType = uploadedFile.type.split('/')[0];
+                
+                const messageData = {
+                    senderId: currentUserId,
+                    text: downloadURL,
+                    type: fileType,
+                    fileName: uploadedFile.name,
+                    createdAt: timestamp,
+                };
 
-            await chatRef.collection('messages').add(messageData);
-            await chatRef.update({
-                lastMessageText: `[${fileType.charAt(0).toUpperCase() + fileType.slice(1)} Dosyası]`,
-                lastMessageSender: currentUserId,
-                lastMessageAt: timestamp,
-            });
+                await chatRef.collection('messages').add(messageData);
+                await chatRef.update({
+                    lastMessageText: `[${fileType.charAt(0).toUpperCase() + fileType.slice(1)} Dosyası]`,
+                    lastMessageSender: currentUserId,
+                    lastMessageAt: timestamp,
+                });
 
-            uploadedFile = null;
-            mediaPreviewModal.style.display = 'none';
-            fileUpload.value = '';
-        });
+                uploadedFile = null;
+                mediaPreviewModal.style.display = 'none';
+                fileUpload.value = '';
+            }
+        );
 
     } catch (error) {
         console.error("Dosya gönderme hatası: ", error);
@@ -572,13 +580,15 @@ async function listenForChats() {
     }
 
     const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    if (!currentUserId) return; // Kullanıcı ID'si yoksa dinlemeyi durdur
+
     const chatsRef = db.collection('chats');
 
     unsubscribeChats = chatsRef.where('participants', 'array-contains', currentUserId)
         .orderBy('lastMessageAt', 'desc')
         .onSnapshot(async (snapshot) => {
             chatListUl.innerHTML = '';
-            for (const doc of snapshot.docs) {
+            const chatPromises = snapshot.docs.map(async doc => {
                 const chatData = doc.data();
                 
                 let chatName = '';
@@ -613,8 +623,11 @@ async function listenForChats() {
                     }
                 }
 
-                displayChatItem(doc.id, chatName, chatPicUrl, lastMessageText, lastMessageTime, chatData);
-            }
+                return { chatId: doc.id, chatName, chatPicUrl, lastMessageText, lastMessageTime, chatData };
+            });
+
+            const chats = await Promise.all(chatPromises);
+            chats.forEach(chat => displayChatItem(chat.chatId, chat.chatName, chat.chatPicUrl, chat.lastMessageText, chat.lastMessageTime, chat.chatData));
         });
 }
 
