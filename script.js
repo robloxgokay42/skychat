@@ -63,6 +63,8 @@ const addUserCloseButton = document.getElementById('add-user-close');
 const addUserIdInput = document.getElementById('add-user-id');
 const addUserToGroupButton = document.getElementById('add-user-to-group-button');
 
+const closeChatButton = document.getElementById('close-chat-button');
+
 let currentChatId = null;
 let chatType = null;
 let foundUsers = [];
@@ -609,3 +611,13 @@ document.getElementById('transfer-ownership').onclick = () => {
     alert("Grup sahipliğini devretme özelliği yakında eklenecek.");
     groupMenu.style.display = 'none';
 };
+
+function closeChat() {
+    document.getElementById('main-content').style.display = 'none';
+    currentChatId = null;
+    currentChatData = null;
+    // Eğer sohbet kapatıldığında listeye dönmek istiyorsanız
+    // Buraya listenForChats() fonksiyonunu çağırabilirsiniz, zaten her yüklemede çalışıyor.
+}
+
+closeChatButton.onclick = closeChat;
