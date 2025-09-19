@@ -13,6 +13,7 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 const profilePictureUrls = [
     "https://i.imgur.com/BDFeiYS.png",
@@ -55,6 +56,13 @@ const messageInput = document.getElementById('message-input');
 const sendMessageButton = document.getElementById('send-message-button');
 const chatListUl = document.getElementById('chat-list-ul');
 
+const fileUpload = document.getElementById('file-upload');
+const mediaPreviewModal = document.getElementById('media-preview-modal');
+const mediaPreviewContainer = document.getElementById('media-preview-container');
+const fileNameDisplay = document.getElementById('file-name');
+const sendMediaButton = document.getElementById('send-media-button');
+const mediaCloseButton = document.getElementById('media-close-button');
+
 const groupMenuDropdown = document.getElementById('group-menu-dropdown');
 const groupMenu = groupMenuDropdown.querySelector('.dropdown-content');
 
@@ -71,6 +79,7 @@ let currentChatId = null;
 let chatType = null;
 let foundUsers = [];
 let currentChatData = null;
+let uploadedFile = null;
 
 function toggleAuthForms() {
     loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
@@ -246,7 +255,7 @@ createChatButton.onclick = () => {
     targetIdsInput.placeholder = 'Kullanıcı ID\'si';
     groupNameInput.style.display = 'none';
     chatType = 'private';
-    createChatModal.style.display = 'block';
+    createChatModal.style.display = 'flex';
     targetIdsInput.value = '';
     userSearchStatus.textContent = '';
     startChatButton.disabled = true;
@@ -258,7 +267,7 @@ createGroupButton.onclick = () => {
     targetIdsInput.placeholder = 'ID\'ler (örn: 1234, 5678, 9101)';
     groupNameInput.style.display = 'block';
     chatType = 'group';
-    createChatModal.style.display = 'block';
+    createChatModal.style.display = 'flex';
     targetIdsInput.value = '';
     groupNameInput.value = '';
     userSearchStatus.textContent = '';
@@ -269,12 +278,21 @@ closeButton.onclick = () => {
     createChatModal.style.display = 'none';
 };
 
+mediaCloseButton.onclick = () => {
+    mediaPreviewModal.style.display = 'none';
+    uploadedFile = null;
+};
+
 window.onclick = (event) => {
     if (event.target == createChatModal) {
         createChatModal.style.display = 'none';
     }
     if (event.target == addUserModal) {
         addUserModal.style.display = 'none';
+    }
+    if (event.target == mediaPreviewModal) {
+        mediaPreviewModal.style.display = 'none';
+        uploadedFile = null;
     }
 };
 
@@ -384,7 +402,6 @@ function startChat(chatDocId, chatName, picUrl, chatData = null) {
     chatMessages.innerHTML = '';
     messageInput.value = '';
     
-    // Mesaj gönderme butonunu aktif ediyoruz
     sendMessageButton.disabled = false;
     
     const currentUserId = parseInt(localStorage.getItem('currentUserId'));
@@ -395,7 +412,6 @@ function startChat(chatDocId, chatName, picUrl, chatData = null) {
         groupMenuDropdown.style.display = 'none';
     }
 
-    // Mobil görünüm için
     if (window.innerWidth <= 768) {
         document.getElementById('main-content').style.display = 'flex';
         appContainer.classList.add('chat-open');
@@ -420,6 +436,7 @@ sendMessageButton.onclick = async () => {
         senderId: currentUserId,
         text: messageText,
         createdAt: timestamp,
+        type: 'text'
     };
 
     try {
@@ -436,6 +453,86 @@ sendMessageButton.onclick = async () => {
     }
 };
 
+fileUpload.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+        return;
+    }
+    uploadedFile = file;
+
+    fileNameDisplay.textContent = file.name;
+    mediaPreviewContainer.innerHTML = '';
+
+    if (file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        mediaPreviewContainer.appendChild(img);
+    } else if (file.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.controls = true;
+        mediaPreviewContainer.appendChild(video);
+    } else {
+        const fileIcon = document.createElement('i');
+        fileIcon.className = 'fas fa-file';
+        fileIcon.style.fontSize = '50px';
+        fileIcon.style.marginBottom = '10px';
+        mediaPreviewContainer.appendChild(fileIcon);
+    }
+
+    mediaPreviewModal.style.display = 'flex';
+};
+
+sendMediaButton.onclick = async () => {
+    if (!uploadedFile || !currentChatId) {
+        return;
+    }
+
+    const currentUserId = parseInt(localStorage.getItem('currentUserId'));
+    const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+    const chatRef = db.collection('chats').doc(currentChatId);
+
+    try {
+        const storageRef = storage.ref(`chat_files/${currentChatId}/${Date.now()}_${uploadedFile.name}`);
+        const uploadTask = storageRef.put(uploadedFile);
+
+        uploadTask.on('state_changed', (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('Upload is ' + progress + '% done');
+            // İsteğe bağlı olarak progress bar eklenebilir.
+        }, (error) => {
+            console.error("Yükleme hatası: ", error);
+            alert("Dosya yüklenirken bir hata oluştu.");
+        }, async () => {
+            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+            const fileType = uploadedFile.type.split('/')[0];
+            
+            const messageData = {
+                senderId: currentUserId,
+                text: downloadURL,
+                type: fileType,
+                fileName: uploadedFile.name,
+                createdAt: timestamp,
+            };
+
+            await chatRef.collection('messages').add(messageData);
+            await chatRef.update({
+                lastMessageText: `[${fileType.charAt(0).toUpperCase() + fileType.slice(1)} Dosyası]`,
+                lastMessageSender: currentUserId,
+                lastMessageAt: timestamp,
+            });
+
+            uploadedFile = null;
+            mediaPreviewModal.style.display = 'none';
+            fileUpload.value = '';
+        });
+
+    } catch (error) {
+        console.error("Dosya gönderme hatası: ", error);
+        alert("Dosya gönderilemedi.");
+    }
+};
+
 let unsubscribeMessages = null;
 function listenForMessages(chatId) {
     if (unsubscribeMessages) {
@@ -443,15 +540,23 @@ function listenForMessages(chatId) {
     }
 
     const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('createdAt');
-    unsubscribeMessages = messagesRef.onSnapshot((snapshot) => {
+    unsubscribeMessages = messagesRef.onSnapshot(async (snapshot) => {
         chatMessages.innerHTML = '';
-        snapshot.docs.forEach(doc => {
-            const message = doc.data();
-            displayMessage(message);
-        });
+        const usersInChat = {};
+        for (const messageDoc of snapshot.docs) {
+            const message = messageDoc.data();
+            if (!usersInChat[message.senderId]) {
+                const userDoc = await db.collection('users').where('userId', '==', message.senderId).get();
+                if (!userDoc.empty) {
+                    usersInChat[message.senderId] = userDoc.docs[0].data();
+                }
+            }
+            displayMessage(message, usersInChat[message.senderId]);
+        }
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 }
+
 
 let unsubscribeChats = null;
 async function listenForChats() {
@@ -564,22 +669,65 @@ async function deleteChat(chatId) {
     }
 }
 
-function displayMessage(message) {
+function displayMessage(message, senderData) {
     const currentUserId = parseInt(localStorage.getItem('currentUserId'));
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message-bubble');
     messageBubble.classList.add(message.senderId == currentUserId ? 'sent' : 'received');
 
-    // Gönderen ID'sini al ve mesajı oluştur
-    let messageContent = message.text;
-    if (currentChatData && currentChatData.type === 'group' && message.senderId !== currentUserId) {
-        const sender = foundUsers.find(user => user.userId === message.senderId) || {};
-        messageContent = `${sender.username || 'Bilinmeyen'}: ${message.text}`;
+    // Eğer grup sohbetiyse ve mesajı gönderen kendimiz değilsek kullanıcı adını göster
+    let senderName = '';
+    if (currentChatData.type === 'group' && message.senderId !== currentUserId) {
+        senderName = senderData ? `<strong class="sender-name">${senderData.username}:</strong> ` : '';
+    }
+
+    if (message.type === 'text') {
+        const messageContent = document.createElement('div');
+        messageContent.innerHTML = senderName + formatLinks(message.text);
+        messageBubble.appendChild(messageContent);
+    } else if (message.type === 'image') {
+        const imgContainer = document.createElement('div');
+        imgContainer.classList.add('media-container');
+        const img = document.createElement('img');
+        img.src = message.text;
+        img.onclick = () => window.open(message.text, '_blank');
+        imgContainer.appendChild(img);
+        messageBubble.appendChild(imgContainer);
+    } else if (message.type === 'video') {
+        const videoContainer = document.createElement('div');
+        videoContainer.classList.add('media-container');
+        const video = document.createElement('video');
+        video.src = message.text;
+        video.controls = true;
+        videoContainer.appendChild(video);
+        messageBubble.appendChild(videoContainer);
+    } else {
+        const fileContainer = document.createElement('div');
+        fileContainer.classList.add('media-container');
+        fileContainer.innerHTML = `<i class="fas fa-file"></i> <a href="${message.text}" target="_blank">${message.fileName}</a>`;
+        messageBubble.appendChild(fileContainer);
     }
     
-    messageBubble.textContent = messageContent;
     chatMessages.appendChild(messageBubble);
 }
+
+function formatLinks(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, (url) => {
+        return `<a href="#" data-url="${url}">${url}</a>`;
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (e.target.matches('.message-bubble a')) {
+        e.preventDefault();
+        const url = e.target.getAttribute('data-url');
+        const isConfirmed = confirm('Bu bağlantıyı açmak istediğinizden emin misin?\n\n' + url);
+        if (isConfirmed) {
+            window.open(url, '_blank');
+        }
+    }
+});
 
 groupMenuDropdown.querySelector('.dropbtn').onclick = () => {
     groupMenu.style.display = groupMenu.style.display === 'block' ? 'none' : 'block';
