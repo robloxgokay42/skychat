@@ -64,6 +64,8 @@ const addUserIdInput = document.getElementById('add-user-id');
 const addUserToGroupButton = document.getElementById('add-user-to-group-button');
 
 const closeChatButton = document.getElementById('close-chat-button');
+const logoutButton = document.getElementById('logout-button'); // Yeni logout butonu
+const deleteAccountButton = document.getElementById('delete-account-button'); // Yeni hesap sil butonu
 
 let currentChatId = null;
 let chatType = null;
@@ -230,6 +232,14 @@ window.onload = async () => {
     }
 };
 
+// Event Listeners
+toggleAuthText.onclick = toggleAuthForms;
+loginForm.onsubmit = (e) => { e.preventDefault(); loginUser(); };
+signupForm.onsubmit = (e) => { e.preventDefault(); signupUser(); };
+logoutButton.onclick = () => { localStorage.clear(); location.reload(); };
+deleteAccountButton.onclick = deleteAccount;
+
+
 createChatButton.onclick = () => {
     modalTitle.textContent = 'Yeni Sohbet Oluştur';
     modalInfo.textContent = 'Mesajlaşmak istediğiniz kişinin ID\'sini girin:';
@@ -337,7 +347,7 @@ startChatButton.onclick = async () => {
         }
         chatDocId = `group_${Date.now()}`;
         chatName = groupName;
-        chatPicUrl = 'https://via.placeholder.com/40';
+        chatPicUrl = 'https://via.placeholder.com/40'; // Grup sohbetleri için varsayılan resim
     }
     
     const participants = foundUsers.map(user => user.userId);
@@ -405,6 +415,8 @@ sendMessageButton.onclick = async () => {
     try {
         await chatRef.collection('messages').add(messageData);
         await chatRef.update({
+            lastMessageText: messageText, // Son mesajı da güncelliyoruz
+            lastMessageSender: currentUserId,
             lastMessageAt: timestamp,
         });
         messageInput.value = '';
@@ -448,6 +460,12 @@ async function listenForChats() {
                 
                 let chatName = '';
                 let chatPicUrl = 'https://via.placeholder.com/40';
+                let lastMessageText = chatData.lastMessageText || "Henüz mesaj yok.";
+                let lastMessageTime = '';
+
+                if (chatData.lastMessageAt && chatData.lastMessageAt.toDate) {
+                    lastMessageTime = formatTimestamp(chatData.lastMessageAt.toDate());
+                }
                 
                 if (chatData.type === 'private') {
                     const partnerId = chatData.participants.find(id => id !== currentUserId);
@@ -464,14 +482,20 @@ async function listenForChats() {
                 } else if (chatData.type === 'group') {
                     chatName = chatData.name || 'Grup Sohbeti';
                     chatPicUrl = 'https://via.placeholder.com/40';
+                    if (chatData.lastMessageSender) {
+                        const senderDoc = await db.collection('users').where('userId', '==', chatData.lastMessageSender).get();
+                        if (!senderDoc.empty) {
+                            lastMessageText = `${senderDoc.docs[0].data().username}: ${lastMessageText}`;
+                        }
+                    }
                 }
 
-                displayChatItem(doc.id, chatName, chatPicUrl, chatData);
+                displayChatItem(doc.id, chatName, chatPicUrl, lastMessageText, lastMessageTime, chatData);
             }
         });
 }
 
-function displayChatItem(chatId, chatName, picUrl, chatData) {
+function displayChatItem(chatId, chatName, picUrl, lastMessageText, lastMessageTime, chatData) {
     const listItem = document.createElement('li');
     listItem.onclick = () => {
         const mainContent = document.getElementById('main-content');
@@ -487,7 +511,14 @@ function displayChatItem(chatId, chatName, picUrl, chatData) {
 
     const infoDiv = document.createElement('div');
     infoDiv.classList.add('chat-item-info');
-    infoDiv.innerHTML = `<strong>${chatName}</strong>`;
+    infoDiv.innerHTML = `
+        <strong>${chatName}</strong>
+        <p>${lastMessageText}</p>
+    `;
+
+    const timeSpan = document.createElement('span');
+    timeSpan.classList.add('chat-item-time');
+    timeSpan.textContent = lastMessageTime;
 
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '&#x1F5D1;';
@@ -501,6 +532,7 @@ function displayChatItem(chatId, chatName, picUrl, chatData) {
 
     listItem.appendChild(img);
     listItem.appendChild(infoDiv);
+    listItem.appendChild(timeSpan);
     listItem.appendChild(deleteBtn);
     chatListUl.appendChild(listItem);
 }
@@ -517,11 +549,8 @@ async function deleteChat(chatId) {
         await batch.commit();
 
         await chatRef.delete();
-        chatPartnerUsername.textContent = '';
-        chatPartnerProfilePic.src = '';
-        chatMessages.innerHTML = '';
-        sendMessageButton.disabled = true;
-        groupMenuDropdown.style.display = 'none';
+        // Sohbet silindikten sonra açık olan sohbeti kapat
+        closeChat();
         alert("Sohbet başarıyla silindi.");
     } catch (error) {
         console.error("Sohbet silme hatası: ", error);
@@ -616,8 +645,34 @@ function closeChat() {
     document.getElementById('main-content').style.display = 'none';
     currentChatId = null;
     currentChatData = null;
-    // Eğer sohbet kapatıldığında listeye dönmek istiyorsanız
-    // Buraya listenForChats() fonksiyonunu çağırabilirsiniz, zaten her yüklemede çalışıyor.
+    // Sohbet listesinin tekrar yüklenmesi için gerek yok çünkü onSnapshot zaten dinliyor.
+    // Ancak mobil görünümde tekrar sidebar'a dönmek için bunu kullanabiliriz:
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').style.display = 'flex'; // sidebar'ı tekrar göster
+    }
 }
 
 closeChatButton.onclick = closeChat;
+
+
+// Zaman damgalarını daha okunaklı hale getiren yardımcı fonksiyon
+function formatTimestamp(date) {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const oneDay = 1000 * 60 * 60 * 24;
+
+    if (diff < oneDay && date.getDate() === now.getDate()) {
+        // Bugün
+        return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    } else if (diff < oneDay * 2 && date.getDate() === now.getDate() - 1) {
+        // Dün
+        return "Dün";
+    } else if (diff < oneDay * 7) {
+        // Bu hafta (gün adı)
+        const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        return days[date.getDay()];
+    } else {
+        // Daha eski (tarih)
+        return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+}
