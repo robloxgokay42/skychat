@@ -370,7 +370,7 @@ async function createOrGetChat(chatId, type, participants, chatName = null) {
             ownerId: type === 'group' ? parseInt(localStorage.getItem('currentUserId')) : null,
             admins: type === 'group' ? [parseInt(localStorage.getItem('currentUserId'))] : null,
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastMessageText: "" // Yeni eklenen alan
+            lastMessageText: ""
         });
     }
     return chatRef;
@@ -416,7 +416,7 @@ sendMessageButton.onclick = async () => {
     try {
         await chatRef.collection('messages').add(messageData);
         await chatRef.update({
-            lastMessageText: messageText, // Son mesajı da güncelliyoruz
+            lastMessageText: messageText,
             lastMessageSender: currentUserId,
             lastMessageAt: timestamp,
         });
