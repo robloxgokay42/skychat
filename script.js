@@ -64,8 +64,8 @@ const addUserIdInput = document.getElementById('add-user-id');
 const addUserToGroupButton = document.getElementById('add-user-to-group-button');
 
 const closeChatButton = document.getElementById('close-chat-button');
-const logoutButton = document.getElementById('logout-button'); // Yeni logout butonu
-const deleteAccountButton = document.getElementById('delete-account-button'); // Yeni hesap sil butonu
+const logoutButton = document.getElementById('logout-button');
+const deleteAccountButton = document.getElementById('delete-account-button');
 
 let currentChatId = null;
 let chatType = null;
@@ -347,7 +347,7 @@ startChatButton.onclick = async () => {
         }
         chatDocId = `group_${Date.now()}`;
         chatName = groupName;
-        chatPicUrl = 'https://via.placeholder.com/40'; // Grup sohbetleri için varsayılan resim
+        chatPicUrl = 'https://via.placeholder.com/40';
     }
     
     const participants = foundUsers.map(user => user.userId);
@@ -369,7 +369,8 @@ async function createOrGetChat(chatId, type, participants, chatName = null) {
             name: chatName,
             ownerId: type === 'group' ? parseInt(localStorage.getItem('currentUserId')) : null,
             admins: type === 'group' ? [parseInt(localStorage.getItem('currentUserId'))] : null,
-            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastMessageText: "" // Yeni eklenen alan
         });
     }
     return chatRef;
@@ -549,7 +550,6 @@ async function deleteChat(chatId) {
         await batch.commit();
 
         await chatRef.delete();
-        // Sohbet silindikten sonra açık olan sohbeti kapat
         closeChat();
         alert("Sohbet başarıyla silindi.");
     } catch (error) {
@@ -645,15 +645,9 @@ function closeChat() {
     document.getElementById('main-content').style.display = 'none';
     currentChatId = null;
     currentChatData = null;
-    // Sohbet listesinin tekrar yüklenmesi için gerek yok çünkü onSnapshot zaten dinliyor.
-    // Ancak mobil görünümde tekrar sidebar'a dönmek için bunu kullanabiliriz:
-    if (window.innerWidth <= 768) {
-        document.getElementById('sidebar').style.display = 'flex'; // sidebar'ı tekrar göster
-    }
 }
 
 closeChatButton.onclick = closeChat;
-
 
 // Zaman damgalarını daha okunaklı hale getiren yardımcı fonksiyon
 function formatTimestamp(date) {
@@ -662,17 +656,13 @@ function formatTimestamp(date) {
     const oneDay = 1000 * 60 * 60 * 24;
 
     if (diff < oneDay && date.getDate() === now.getDate()) {
-        // Bugün
         return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     } else if (diff < oneDay * 2 && date.getDate() === now.getDate() - 1) {
-        // Dün
         return "Dün";
     } else if (diff < oneDay * 7) {
-        // Bu hafta (gün adı)
         const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
         return days[date.getDay()];
     } else {
-        // Daha eski (tarih)
         return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 }
