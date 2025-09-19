@@ -383,6 +383,8 @@ function startChat(chatDocId, chatName, picUrl, chatData = null) {
     chatPartnerProfilePic.src = picUrl || 'https://via.placeholder.com/40';
     chatMessages.innerHTML = '';
     messageInput.value = '';
+    
+    // Mesaj gönderme butonunu aktif ediyoruz
     sendMessageButton.disabled = false;
     
     const currentUserId = parseInt(localStorage.getItem('currentUserId'));
@@ -393,7 +395,14 @@ function startChat(chatDocId, chatName, picUrl, chatData = null) {
         groupMenuDropdown.style.display = 'none';
     }
 
-    document.getElementById('main-content').style.display = 'flex';
+    // Mobil görünüm için
+    if (window.innerWidth <= 768) {
+        document.getElementById('main-content').style.display = 'flex';
+        appContainer.classList.add('chat-open');
+    } else {
+        document.getElementById('main-content').style.display = 'flex';
+    }
+    
     listenForMessages(chatDocId);
 }
 
@@ -423,6 +432,7 @@ sendMessageButton.onclick = async () => {
         messageInput.value = '';
     } catch (error) {
         console.error("Mesaj gönderme hatası: ", error);
+        alert("Mesaj gönderilemedi: " + error.message);
     }
 };
 
@@ -499,10 +509,6 @@ async function listenForChats() {
 function displayChatItem(chatId, chatName, picUrl, lastMessageText, lastMessageTime, chatData) {
     const listItem = document.createElement('li');
     listItem.onclick = () => {
-        const mainContent = document.getElementById('main-content');
-        if (window.innerWidth <= 768) {
-             mainContent.style.display = 'flex';
-        }
         startChat(chatId, chatName, picUrl, chatData);
     };
 
@@ -522,7 +528,7 @@ function displayChatItem(chatId, chatName, picUrl, lastMessageText, lastMessageT
     timeSpan.textContent = lastMessageTime;
 
     const deleteBtn = document.createElement('button');
-    deleteBtn.innerHTML = '&#x1F5D1;';
+    deleteBtn.innerHTML = '&times;';
     deleteBtn.classList.add('chat-item-delete');
     deleteBtn.onclick = async (e) => {
         e.stopPropagation();
@@ -564,7 +570,14 @@ function displayMessage(message) {
     messageBubble.classList.add('message-bubble');
     messageBubble.classList.add(message.senderId == currentUserId ? 'sent' : 'received');
 
-    messageBubble.textContent = message.text;
+    // Gönderen ID'sini al ve mesajı oluştur
+    let messageContent = message.text;
+    if (currentChatData && currentChatData.type === 'group' && message.senderId !== currentUserId) {
+        const sender = foundUsers.find(user => user.userId === message.senderId) || {};
+        messageContent = `${sender.username || 'Bilinmeyen'}: ${message.text}`;
+    }
+    
+    messageBubble.textContent = messageContent;
     chatMessages.appendChild(messageBubble);
 }
 
@@ -642,6 +655,9 @@ document.getElementById('transfer-ownership').onclick = () => {
 };
 
 function closeChat() {
+    if (window.innerWidth <= 768) {
+        appContainer.classList.remove('chat-open');
+    }
     document.getElementById('main-content').style.display = 'none';
     currentChatId = null;
     currentChatData = null;
