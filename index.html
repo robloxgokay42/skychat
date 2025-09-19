@@ -41,8 +41,9 @@
                 </div>
 
                 <div class="sidebar-buttons">
-                    <button id="create-chat-button">Yeni Sohbet Oluştur</button>
-                    <button id="create-group-button">Grup Sohbeti Oluştur</button>
+                    <button id="create-chat-button" class="action-button blue-button">Yeni Sohbet Oluştur</button>
+                    <button id="create-group-button" class="action-button teal-button">Grup Sohbeti Oluştur</button>
+                    <button id="delete-account-button" class="action-button red-button">Hesabı Sil</button>
                 </div>
 
                 <div class="chat-list">
@@ -52,13 +53,13 @@
                 </div>
 
                 <div class="logout-container">
-                    <button id="logout-button" onclick="localStorage.clear(); location.reload();">Çıkış Yap</button>
+                    <button id="logout-button" class="action-button red-button">Çıkış Yap</button>
                 </div>
             </div>
 
             <div id="main-content" style="display: none;">
                 <div class="chat-header">
-                    <button id="close-chat-button" class="back-button">&larr;</button>
+                    <button id="close-chat-button" class="back-button"><i class="fas fa-arrow-left"></i></button>
                     <img id="chat-partner-profile-pic" class="chat-profile-pic" src="">
                     <span id="chat-partner-username"></span>
                     <div id="group-menu-dropdown" class="dropdown">
@@ -106,6 +107,7 @@
     </div>
     
     <script src="script.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 
 </body>
 </html>
