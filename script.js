@@ -499,16 +499,14 @@ sendMediaButton.onclick = async () => {
         const storageRef = storage.ref(`chat_files/${currentChatId}/${Date.now()}_${uploadedFile.name}`);
         const uploadTask = storageRef.put(uploadedFile);
 
-        // Upload Task durumunu izle
         uploadTask.on('state_changed', 
             (snapshot) => {
                 const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                 console.log('Upload is ' + progress + '% done');
-                // İsteğe bağlı olarak bir progress bar güncellenebilir
             }, 
             (error) => {
                 console.error("Yükleme hatası: ", error);
-                alert("Dosya yüklenirken bir hata oluştu.");
+                alert("Dosya yüklenirken bir hata oluştu. Lütfen Firebase Storage izinlerinizi kontrol edin.");
                 uploadedFile = null;
                 mediaPreviewModal.style.display = 'none';
                 fileUpload.value = '';
@@ -540,7 +538,10 @@ sendMediaButton.onclick = async () => {
 
     } catch (error) {
         console.error("Dosya gönderme hatası: ", error);
-        alert("Dosya gönderilemedi.");
+        alert("Dosya gönderilemedi: " + error.message);
+        uploadedFile = null;
+        mediaPreviewModal.style.display = 'none';
+        fileUpload.value = '';
     }
 };
 
@@ -580,7 +581,7 @@ async function listenForChats() {
     }
 
     const currentUserId = parseInt(localStorage.getItem('currentUserId'));
-    if (!currentUserId) return; // Kullanıcı ID'si yoksa dinlemeyi durdur
+    if (!currentUserId) return;
 
     const chatsRef = db.collection('chats');
 
@@ -695,7 +696,6 @@ function displayMessage(message, senderData) {
     messageBubble.classList.add('message-bubble');
     messageBubble.classList.add(message.senderId == currentUserId ? 'sent' : 'received');
 
-    // Eğer grup sohbetiyse ve mesajı gönderen kendimiz değilsek kullanıcı adını göster
     let senderName = '';
     if (currentChatData.type === 'group' && message.senderId !== currentUserId) {
         senderName = senderData ? `<strong class="sender-name">${senderData.username}:</strong> ` : '';
@@ -833,7 +833,6 @@ function closeChat() {
 
 closeChatButton.onclick = closeChat;
 
-// Zaman damgalarını daha okunaklı hale getiren yardımcı fonksiyon
 function formatTimestamp(date) {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
