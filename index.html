@@ -5,93 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkyChat</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
 </head>
 <body>
+
     <div class="container">
         <div id="auth-container">
-            <h2>SkyChat'e Hoş Geldiniz!</h2>
-            <div id="login-form">
-                <h3>Giriş Yap</h3>
-                <input type="text" id="login-username" placeholder="Kullanıcı Adı">
-                <button onclick="loginUser()">Giriş Yap</button>
-            </div>
-            <div id="signup-form" style="display: none;">
-                <h3>Kayıt Ol</h3>
-                <input type="text" id="signup-username" placeholder="Kullanıcı Adı">
+            <img src="https://i.imgur.com/gK5H3oM.png" alt="Logo" class="logo">
+            <form id="login-form">
+                <h1>Giriş Yap</h1>
+                <input type="text" id="login-username" placeholder="Kullanıcı Adı" required>
+                <button type="submit">Giriş Yap</button>
+            </form>
+
+            <form id="signup-form" style="display: none;">
+                <h1>Kayıt Ol</h1>
+                <input type="text" id="signup-username" placeholder="Kullanıcı Adı" required>
                 <input type="text" id="signup-bio" placeholder="Biyografi">
-                <button onclick="signupUser()">Kayıt Ol</button>
-            </div>
-            <p id="toggle-auth-text" onclick="toggleAuthForms()">Hesabın yok mu? Kayıt ol!</p>
+                <button type="submit">Kayıt Ol</button>
+            </form>
+
+            <p id="toggle-auth-text">Hesabın yok mu? Kayıt ol!</p>
         </div>
 
         <div id="app-container" style="display: none;">
-            <div id="sidebar">
-                <div id="profile-section">
-                    <img id="current-user-profile-pic" src="" alt="Profil Fotoğrafı">
-                    <h3 id="current-user-username"></h3>
-                    <p id="current-user-bio"></p>
-                    <button id="create-chat-button">Mesaj Oluştur</button>
-                    <button id="create-group-button">Grup Kur</button>
-                    <button onclick="deleteAccount()" class="delete-button">Hesabı Sil</button>
+            <div class="sidebar">
+                <div class="user-profile">
+                    <img id="current-user-profile-pic" class="profile-pic" src="">
+                    <div class="profile-info">
+                        <span id="current-user-username"></span>
+                        <p id="current-user-bio"></p>
+                    </div>
                 </div>
-                <div id="chat-list">
-                    <h4>Sohbetlerim</h4>
+
+                <div class="sidebar-buttons">
+                    <button id="create-chat-button">Yeni Sohbet Oluştur</button>
+                    <button id="create-group-button">Grup Sohbeti Oluştur</button>
+                </div>
+
+                <div class="chat-list">
+                    <h3>Sohbetlerim</h3>
                     <ul id="chat-list-ul">
                         </ul>
                 </div>
+
+                <div class="logout-container">
+                    <button id="logout-button" onclick="localStorage.clear(); location.reload();">Çıkış Yap</button>
+                </div>
             </div>
 
-            <div id="main-content">
-                <div id="chat-header">
-                    <img id="chat-partner-profile-pic" src="" alt="Karşı Tarafın Fotoğrafı">
-                    <h3 id="chat-partner-username"></h3>
-                    <div class="dropdown" id="group-menu-dropdown" style="display: none;">
+            <div id="main-content" style="display: none;">
+                <div class="chat-header">
+                    <button id="close-chat-button" class="back-button">&larr;</button>
+                    <img id="chat-partner-profile-pic" class="chat-profile-pic" src="">
+                    <span id="chat-partner-username"></span>
+                    <div id="group-menu-dropdown" class="dropdown">
                         <button class="dropbtn">...</button>
                         <div class="dropdown-content">
-                            <a href="#" id="add-user-to-group">Kullanıcı Ekle</a>
-                            <a href="#" id="remove-user-from-group">Kullanıcı At</a>
-                            <a href="#" id="manage-permissions">Üye İzinleri</a>
+                            <a href="#" id="add-user-to-group">Üye Ekle</a>
+                            <a href="#" id="remove-user-from-group">Üye Çıkar</a>
+                            <a href="#" id="manage-permissions">İzinleri Yönet</a>
                             <a href="#" id="make-admin">Yönetici Yap</a>
-                            <a href="#" id="transfer-ownership">Sahipliği Devret</a>
+                            <a href="#" id="transfer-ownership">Grup Sahipliğini Devret</a>
                         </div>
                     </div>
                 </div>
                 <div id="chat-messages">
                     </div>
-                <div id="message-input-area">
-                    <input type="text" id="message-input" placeholder="Bir mesaj yazın...">
-                    <button id="send-message-button" disabled>Gönder</button>
+                <div class="message-input-container">
+                    <input type="text" id="message-input" placeholder="Mesaj yaz...">
+                    <button id="send-message-button">Gönder</button>
                 </div>
-            </div>
-        </div>
-
-        <div id="create-chat-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close-button">&times;</span>
-                <h4 id="modal-title">Yeni Sohbet Oluştur</h4>
-                <p id="modal-info">Mesajlaşmak istediğiniz kişinin ID'sini girin:</p>
-                <input type="text" id="target-ids-input" placeholder="Kullanıcı ID'leri (örn: 1234, 5678)">
-                <input type="text" id="group-name-input" placeholder="Grup Adı" style="display: none;">
-                <button id="find-users-button">Kullanıcıları Bul</button>
-                <button id="start-chat-button" disabled>Sohbet Oluştur</button>
-                <div id="user-search-status"></div>
-            </div>
-        </div>
-        
-        <div id="add-user-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close-button" id="add-user-close">&times;</span>
-                <h4>Kullanıcı Ekle</h4>
-                <input type="text" id="add-user-id" placeholder="Eklemek istediğiniz kişinin ID'si">
-                <button id="add-user-to-group-button">Ekle</button>
             </div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <div id="create-chat-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 id="modal-title"></h2>
+            <p id="modal-info"></p>
+            <input type="text" id="target-ids-input" placeholder="">
+            <input type="text" id="group-name-input" placeholder="Grup Adı" style="display:none;">
+            <button id="find-users-button">Kullanıcıları Bul</button>
+            <p id="user-search-status"></p>
+            <button id="start-chat-button" disabled>Sohbeti Başlat</button>
+        </div>
+    </div>
+
+    <div id="add-user-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="add-user-close">&times;</span>
+            <h2>Gruba Üye Ekle</h2>
+            <p>Eklenecek kişinin ID'sini girin:</p>
+            <input type="text" id="add-user-id" placeholder="Kullanıcı ID'si">
+            <button id="add-user-to-group-button">Ekle</button>
+        </div>
+    </div>
+    
     <script src="script.js"></script>
+
 </body>
 </html>
