@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkyAI - Yapay Zeka Asistanınız</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 </head>
@@ -37,10 +38,8 @@
                 </button>
             </div>
 
-            <div class="chat-history">
-                <a href="#" class="chat-link">Osmanlı telgrafhane rütbeleri</a>
-                <a href="#" class="chat-link">İttihat ve Terakki tarihi</a>
-            </div>
+            <div id="chat-history-list" class="chat-history">
+                </div>
 
             <div class="sidebar-footer">
                 <div class="user-action">
@@ -53,14 +52,11 @@
         <div class="main-chat">
             
             <div id="chat-box" class="chat-box">
-                <div class="initial-message">
-                    <h2>Nasıl yardımcı olabilirim?</h2>
                 </div>
-            </div>
 
             <div class="input-area-container">
                 <div class="input-area">
-                    <div class="input-prefix">+</div> 
+                    <div id="input-prefix" class="input-prefix" onclick="toggleOptions()">&#x2795;</div> 
                     <textarea id="user-input" placeholder="Herhangi bir şey sor..." rows="1"></textarea>
                     <button id="send-button" onclick="sendMessage()">
                         <span style="font-size: 1.2em;">&#x27A4;</span>
@@ -70,6 +66,8 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@google/genai@0.1.0/dist/client.js"></script>
 
     <script src="script.js"></script>
 </body>
