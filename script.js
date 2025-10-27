@@ -24,7 +24,7 @@ const userInput = document.getElementById('user-input');
 const sendButton = document.getElementById('send-button');
 const authMessage = document.getElementById('auth-message');
 const userDisplay = document.getElementById('user-display');
-
+let isChatInitialized = false; // Sohbetin başlayıp başlamadığını kontrol etmek için
 
 // =================================================================
 // 2. Kimlik Doğrulama İşlemleri
@@ -38,15 +38,25 @@ auth.onAuthStateChanged((user) => {
         chatScreen.classList.remove('hidden');
 
         // Kullanıcı Adını Görüntüle
+        let displayName;
         if (user.isAnonymous) {
-            userDisplay.textContent = "Anonim Kullanıcı";
+            displayName = "Anonim Kullanıcı";
         } else {
-            userDisplay.textContent = user.email || "Kullanıcı";
+            displayName = user.email ? user.email.split('@')[0] : "Kullanıcı";
         }
+        userDisplay.textContent = displayName;
+
+        // İlk kez giriş yapılıyorsa sohbet kutusunu sıfırla
+        if (!isChatInitialized) {
+            startNewChat();
+            isChatInitialized = true;
+        }
+
     } else {
         // Kullanıcı Çıkış Yapmış
         authScreen.classList.remove('hidden');
         chatScreen.classList.add('hidden');
+        isChatInitialized = false;
     }
 });
 
@@ -70,10 +80,8 @@ function signUpWithEmail() {
     auth.createUserWithEmailAndPassword(email, password)
         .then(() => {
             displayAuthMessage("Kayıt başarılı! Giriş yapılıyor...");
-            // onAuthStateChanged otomatik olarak sohbet ekranına geçecektir.
         })
         .catch((error) => {
-            // Firebase hata kodlarını kontrol et ve kullanıcıya göster
             displayAuthMessage(`Kayıt Hatası: ${error.message}`);
         });
 }
@@ -112,7 +120,7 @@ function signInAnonymously() {
 function signOut() {
     auth.signOut().then(() => {
         // Çıkış başarılı. onAuthStateChanged otomatik olarak auth ekranına geçecek.
-        startNewChat(); // Sohbet kutusunu temizle
+        startNewChat(); 
     }).catch((error) => {
         console.error("Çıkış Hatası:", error);
     });
@@ -124,70 +132,103 @@ function signOut() {
 // =================================================================
 
 function startNewChat() {
+    // Sohbet kutusunu ilk baştaki "Nasıl yardımcı olabilirim?" ekranına geri döndür
     chatBox.innerHTML = `
-        <div class="message system-message">
-            Merhaba! Ben SkyAI. Yeni bir sohbete başladık. Size nasıl yardımcı olabilirim?
+        <div class="initial-message">
+            <h2>Nasıl yardımcı olabilirim?</h2>
         </div>
     `;
     userInput.value = '';
     scrollToBottom();
 }
 
-function createMessageElement(content, type) {
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message', `${type}-message`);
-    messageDiv.textContent = content;
-    return messageDiv;
+/**
+ * ChatGPT stilinde bir mesaj satırı oluşturur
+ * @param {string} content - Mesaj içeriği (HTML destekli)
+ * @param {string} type - 'user' veya 'ai'
+ * @param {string} iconText - İkon içinde gösterilecek metin (örn. 'U' veya 'A')
+ */
+function createMessageElement(content, type, iconText) {
+    const messageRow = document.createElement('div');
+    messageRow.classList.add('message-row', `${type}-message`);
+
+    const messageContent = document.createElement('div');
+    messageContent.classList.add('message-content');
+
+    const icon = document.createElement('div');
+    icon.classList.add('message-icon');
+    icon.textContent = iconText;
+
+    const text = document.createElement('div');
+    text.classList.add('message-text');
+    // İçeriği HTML olarak ekle (Güvenlik için genellikle sanitize edilmelidir, burada basit tutulmuştur)
+    text.innerHTML = content; 
+
+    messageContent.appendChild(icon);
+    messageContent.appendChild(text);
+    messageRow.appendChild(messageContent);
+    return messageRow;
 }
 
 function scrollToBottom() {
-    chatBox.scrollTop = chatBox.scrollHeight;
+    // Sohbet kutusunun kendisi değil, ana sohbet alanı (main-chat) scroll ediyor
+    const mainChat = document.querySelector('.main-chat'); 
+    mainChat.scrollTop = mainChat.scrollHeight;
 }
 
 function sendMessage() {
     const messageText = userInput.value.trim();
     if (messageText === "") return;
+    
+    // İlk mesajı gönderdikten sonra başlangıç ekranını temizle
+    if (chatBox.querySelector('.initial-message')) {
+        chatBox.innerHTML = '';
+    }
 
     // 1. Kullanıcı Mesajını Ekle
-    chatBox.appendChild(createMessageElement(messageText, 'user'));
+    const user = auth.currentUser;
+    const userIcon = user.isAnonymous ? '?' : (user.email ? user.email[0].toUpperCase() : 'U');
+
+    chatBox.appendChild(createMessageElement(messageText, 'user', userIcon));
     userInput.value = '';
+    userInput.style.height = 'auto'; // Gönderme sonrası boyutu sıfırla
     scrollToBottom();
 
-    // 2. AI Cevabı Bekleniyor Mesajı
-    const aiResponsePlaceholder = createMessageElement("SkyAI yazıyor...", 'ai');
+    // 2. AI Cevabı Bekleniyor Mesajı (Yer Tutucu)
+    const aiResponsePlaceholder = createMessageElement("SkyAI yazıyor...", 'ai', 'S');
     chatBox.appendChild(aiResponsePlaceholder);
     scrollToBottom();
 
     // 3. AI Cevabını Al (Arka Uç Gereklidir!)
+    sendButton.disabled = true; // Gönder butonunu devre dışı bırak
+
     getAiResponse(messageText)
         .then(aiResponse => {
             // Yer tutucuyu gerçek cevapla değiştir
-            aiResponsePlaceholder.textContent = aiResponse;
+            aiResponsePlaceholder.querySelector('.message-text').innerHTML = aiResponse;
         })
         .catch(error => {
-            aiResponsePlaceholder.textContent = "Hata: AI servisine ulaşılamıyor. Lütfen konsolu kontrol edin.";
+            aiResponsePlaceholder.querySelector('.message-text').textContent = "Hata: AI servisine ulaşılamıyor. Lütfen konsolu kontrol edin.";
             console.error("AI Çağrı Hatası:", error);
         })
         .finally(() => {
-            scrollToBottom();
             sendButton.disabled = false;
+            scrollToBottom();
         });
-
-    sendButton.disabled = true; // Gönder butonunu devre dışı bırak
 }
 
 // Enter tuşu ile gönderme ve Shift + Enter ile yeni satır
 userInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault(); // Varsayılan Enter hareketini (yeni satır) engelle
+        e.preventDefault(); 
         sendMessage();
     }
 });
 
 // Otomatik Boyutlandırma
 userInput.addEventListener('input', function() {
-    this.style.height = 'auto'; // Önce yüksekliği sıfırla
-    this.style.height = (this.scrollHeight) + 'px'; // Sonra içeriğe göre ayarla
+    this.style.height = 'auto'; 
+    this.style.height = (this.scrollHeight) + 'px'; 
 });
 
 
@@ -196,22 +237,19 @@ userInput.addEventListener('input', function() {
 // =================================================================
 
 /**
- * Bu fonksiyon bir arka uç sunucusu olmadan doğrudan AI anahtarı kullandığı için
- * GÜVENLİ DEĞİLDİR ve SADECE bir yer tutucudur.
- * Gerçekte, bu isteği sunucuna (örn. Cloud Function) göndermelisin.
+ * ⚠️ GÜVENLİK UYARISI: GERÇEK AI ANAHTARI BURADA KULLANILMAMALIDIR.
+ * Bu bir simülasyondur. Gerçek entegrasyon için bir sunucu kullanın.
  */
 async function getAiResponse(prompt) {
-    // ⚠️ GÜVENLİK UYARISI: GERÇEK AI ANAHTARI BURADA KULLANILMAYACAKTIR.
     console.log("AI Anahtarı ön yüzde kullanılmamalıdır. Bu bir yer tutucu yanıttır.");
 
-    // Geliştirme sürecinde gerçek AI yanıtını simüle etmek için
+    // Gerçek AI yanıtını simüle etmek için
     return new Promise(resolve => {
         setTimeout(() => {
-            resolve(`Bu, **SkyAI**'dan gelen simüle edilmiş bir yanıttır. Sorunuz: _"${prompt}"_. Gerçek Google AI entegrasyonu için güvenli bir arka uç (server) gereklidir.`);
+            resolve(`Bu, **SkyAI**'dan gelen simüle edilmiş bir yanıttır. Sorunuz: <em>"${prompt}"</em>. Gerçek Google AI entegrasyonu için güvenli bir arka uç (server) gereklidir.<br><br>Giriş yapma sistemi (Firebase) başarılı bir şekilde çalışıyor!`);
         }, 1500); // 1.5 saniye gecikme
     });
 }
-
 
 // Uygulama Başladığında
 document.addEventListener('DOMContentLoaded', () => {
