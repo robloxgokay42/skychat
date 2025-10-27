@@ -26,7 +26,7 @@ body {
 }
 
 /* =================================================================
-   1. Kimlik Doğrulama Ekranı (Aynı)
+   1. Kimlik Doğrulama Ekranı
    ================================================================= */
 #auth-screen {
     flex-grow: 1; 
@@ -195,7 +195,7 @@ button:hover {
 .chat-actions {
     position: absolute;
     right: 5px;
-    display: none; /* Varsayılan olarak gizli */
+    display: none; 
     gap: 5px;
     z-index: 20;
     background-color: inherit;
@@ -203,7 +203,7 @@ button:hover {
 }
 
 .chat-link-container:hover .chat-actions, .chat-link-container.editing .chat-actions {
-    display: flex; /* Hover veya düzenleme modunda göster */
+    display: flex; 
 }
 
 .chat-actions button {
@@ -267,7 +267,7 @@ button:hover {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    padding-bottom: 150px; /* Input alanına yer açmak için */
+    padding-bottom: 150px; 
     overflow-y: hidden; 
 }
 
@@ -339,7 +339,6 @@ button:hover {
 .input-area-container {
     position: fixed;
     bottom: 0;
-    /* Sidebar genişliğine sabitlendi */
     left: var(--sidebar-width); 
     right: 0;
     display: flex;
@@ -354,7 +353,7 @@ button:hover {
     width: 100%;
     max-width: 800px;
     display: flex;
-    align-items: flex-end; /* Hata düzeltme için flex-end kullanıldı */
+    align-items: flex-end; 
     background-color: var(--input-bg-color);
     border-radius: 10px;
     border: 1px solid var(--border-color);
@@ -363,7 +362,7 @@ button:hover {
 }
 
 .input-prefix {
-    align-self: center; /* Hata düzeltme: Ortala */
+    align-self: center; 
     width: 40px;
     height: 40px;
     display: flex;
@@ -422,6 +421,4 @@ button:hover {
         left: 0;
         padding: 10px;
     }
-    
-    /* ... (Diğer mobil stiller aynı) */
 }
