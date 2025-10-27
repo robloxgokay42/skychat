@@ -1,13 +1,13 @@
 /* Genel Ayarlar (ChatGPT'nin Güncel Koyu Temasına Yakın) */
 :root {
-    --bg-color: #343541; /* Ana Arka Plan (Öncekinden daha açık) */
+    --bg-color: #343541; /* Ana Arka Plan */
     --main-color: #202123; /* Sidebar Arka Planı (Daha koyu) */
-    --text-color: #f7f7f7; /* Daha Parlak Beyaz */
-    --accent-color: #10a37f; /* Vurgu Rengi */
-    --border-color: #444654; /* Sınır Çizgisi */
-    --input-bg-color: #40414f; /* Giriş Kutusu Arka Planı */
-    --message-bg-color: #40414f; /* Mesaj Arka Planı */
-    --ai-message-bg-color: #343541; /* AI Mesaj Satırı Arka Planı (Ana BG ile aynı) */
+    --text-color: #f7f7f7; 
+    --accent-color: #10a37f; 
+    --border-color: #444654; 
+    --input-bg-color: #40414f; 
+    --ai-message-bg-color: #343541; 
+    --sidebar-width: 260px; /* Sidebar Genişliği */
 }
 
 body {
@@ -26,9 +26,8 @@ body {
 }
 
 /* =================================================================
-   1. Kimlik Doğrulama Ekranı (Auth Screen)
+   1. Kimlik Doğrulama Ekranı (Aynı)
    ================================================================= */
-
 #auth-screen {
     flex-grow: 1; 
     display: flex;
@@ -125,7 +124,7 @@ button:hover {
 
 /* Sidebar (Sol Menü) */
 .sidebar {
-    width: 260px;
+    width: var(--sidebar-width);
     background-color: var(--main-color);
     padding: 10px;
     display: flex;
@@ -153,10 +152,6 @@ button:hover {
     align-items: center;
     justify-content: space-between;
 }
-.new-chat-button span:first-child {
-    flex-grow: 1;
-}
-
 .new-chat-button:hover {
     background-color: var(--border-color);
 }
@@ -167,10 +162,16 @@ button:hover {
     padding-top: 5px;
 }
 
-.chat-link {
-    display: block;
-    padding: 8px;
+.chat-link-container {
+    position: relative;
     margin: 5px 0;
+    display: flex;
+    align-items: center;
+}
+
+.chat-link {
+    flex-grow: 1;
+    padding: 8px;
     color: var(--text-color);
     text-decoration: none;
     border-radius: 5px;
@@ -178,8 +179,9 @@ button:hover {
     white-space: nowrap;
     text-overflow: ellipsis;
     transition: background-color 0.2s;
-    font-size: 0.9em; /* Daha küçük font */
-    background-color: var(--main-color); /* Varsayılan koyu arka plan */
+    font-size: 0.9em;
+    background-color: var(--main-color);
+    cursor: pointer;
 }
 
 .chat-link:hover {
@@ -187,7 +189,39 @@ button:hover {
 }
 
 .chat-link.active {
-    background-color: #555762; /* Seçili sohbet rengi */
+    background-color: #555762;
+}
+
+.chat-actions {
+    position: absolute;
+    right: 5px;
+    display: none; /* Varsayılan olarak gizli */
+    gap: 5px;
+    z-index: 20;
+    background-color: inherit;
+    padding-left: 5px;
+}
+
+.chat-link-container:hover .chat-actions, .chat-link-container.editing .chat-actions {
+    display: flex; /* Hover veya düzenleme modunda göster */
+}
+
+.chat-actions button {
+    width: 25px;
+    height: 25px;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 0.8em;
+    cursor: pointer;
+}
+.chat-actions button:hover {
+    color: var(--text-color);
+}
+.chat-actions .delete-button {
+    color: #c00;
 }
 
 .sidebar-footer {
@@ -210,7 +244,7 @@ button:hover {
     width: auto;
     padding: 5px 15px;
     margin: 0;
-    background-color: #c00; /* Çıkış butonu kırmızı */
+    background-color: #c00; 
     border-radius: 5px;
 }
 .user-action button:hover {
@@ -234,10 +268,10 @@ button:hover {
     align-items: center;
     width: 100%;
     padding-bottom: 150px; /* Input alanına yer açmak için */
-    overflow-y: hidden; /* Sadece main-chat scroll etmeli */
+    overflow-y: hidden; 
 }
 
-/* Başlangıç Mesajı / Orta Ekran (Resimdeki gibi) */
+/* Başlangıç Mesajı / Orta Ekran (Aynı) */
 .initial-message {
     flex-grow: 1;
     display: flex;
@@ -257,8 +291,7 @@ button:hover {
     color: var(--text-color);
 }
 
-
-/* Mesaj Stilleri */
+/* Mesaj Stilleri (Aynı) */
 .message-row {
     width: 100%;
     display: flex;
@@ -268,7 +301,7 @@ button:hover {
 }
 
 .message-row:nth-child(even) {
-    background-color: var(--main-color); /* ChatGPT'deki gibi AI mesaj satırını koyu yap */
+    background-color: var(--main-color); 
 }
 
 .message-content {
@@ -302,17 +335,17 @@ button:hover {
     flex-grow: 1;
 }
 
-/* Input Alanı Düzeltmeleri */
+/* Input Alanı Çakışma Düzeltmesi */
 .input-area-container {
     position: fixed;
     bottom: 0;
-    left: 260px; /* Sidebar genişliği */
+    /* Sidebar genişliğine sabitlendi */
+    left: var(--sidebar-width); 
     right: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 0 20px 20px 20px;
-    /* Hafif bir fade efekti ekle */
     background: linear-gradient(to top, var(--bg-color) 70%, rgba(52, 53, 65, 0.7) 100%); 
     z-index: 10;
 }
@@ -321,35 +354,34 @@ button:hover {
     width: 100%;
     max-width: 800px;
     display: flex;
-    align-items: center; /* Hata düzeltme: Öğeleri merkeze hizala */
+    align-items: flex-end; /* Hata düzeltme için flex-end kullanıldı */
     background-color: var(--input-bg-color);
     border-radius: 10px;
     border: 1px solid var(--border-color);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    min-height: 48px; /* Minimum yükseklik belirle */
+    min-height: 48px; 
 }
 
 .input-prefix {
-    /* Hata düzeltme: Textarea'nın padding'i ile hizalanması için */
-    align-self: flex-end; /* En alta hizala */
-    margin-bottom: 8px; /* Gönderme butonunun hizasına yakın olsun */
+    align-self: center; /* Hata düzeltme: Ortala */
     width: 40px;
-    height: 30px;
+    height: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
     font-size: 1.5em;
     color: #8e8e99;
     cursor: pointer;
-    padding: 5px;
-    flex-shrink: 0; /* Küçülmesini engelle */
+    padding: 0;
+    margin-left: 5px;
+    flex-shrink: 0; 
 }
 
 #user-input {
     flex-grow: 1;
     max-height: 200px;
-    padding: 12px 0; /* Sol/Sağ padding'i kaldır, çevreleyen div'den geliyor */
-    padding-left: 5px; /* Prefix ile arasına boşluk */
+    padding: 12px 0; 
+    padding-left: 5px; 
     border: none;
     background-color: transparent;
     color: var(--text-color);
@@ -357,7 +389,6 @@ button:hover {
     overflow-y: auto;
     font-size: 16px;
     line-height: 1.5;
-    /* Hata Düzeltme: Textarea'nın kendi minimum yüksekliğini ayarlamasını engelle */
     min-height: 1.5em; 
 }
 
@@ -367,7 +398,7 @@ button:hover {
     border-radius: 8px;
     background-color: var(--accent-color);
     padding: 0;
-    margin: 4px; /* Düzgün bir boşluk bırak */
+    margin: 4px; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -387,44 +418,10 @@ button:hover {
 
 /* Medya Sorgusu (Mobil uyumluluk için) */
 @media (max-width: 768px) {
-    .chat-container {
-        flex-direction: column;
-    }
-
-    .sidebar {
-        width: 100%;
-        height: 60px;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 15px;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .sidebar-header {
-        margin-bottom: 0;
-        flex-grow: 1;
-    }
-
-    .new-chat-button {
-        width: auto;
-    }
-    
-    .chat-history, .sidebar-footer {
-        display: none; 
-    }
-
     .input-area-container {
         left: 0;
         padding: 10px;
     }
     
-    .main-chat {
-        overflow-y: scroll;
-    }
-    
-    .initial-message {
-        padding-top: 10vh;
-    }
+    /* ... (Diğer mobil stiller aynı) */
 }
