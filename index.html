@@ -8,6 +8,9 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@google/genai@0.1.0/dist/client.js"></script>
+
 </head>
 <body>
 
@@ -32,7 +35,7 @@
     <div id="chat-screen" class="chat-container hidden">
         <div class="sidebar">
             <div class="sidebar-header">
-                <button class="new-chat-button" onclick="startNewChat()">
+                <button class="new-chat-button" onclick="startNewChat(true)">
                     <span>Yeni sohbet</span> 
                     <span style="font-size: 1.2em;">&#x2795;</span> 
                 </button>
@@ -56,7 +59,7 @@
 
             <div class="input-area-container">
                 <div class="input-area">
-                    <div id="input-prefix" class="input-prefix" onclick="toggleOptions()">&#x2795;</div> 
+                    <div id="input-prefix" class="input-prefix">&#x2795;</div> 
                     <textarea id="user-input" placeholder="Herhangi bir şey sor..." rows="1"></textarea>
                     <button id="send-button" onclick="sendMessage()">
                         <span style="font-size: 1.2em;">&#x27A4;</span>
@@ -66,8 +69,6 @@
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@google/genai@0.1.0/dist/client.js"></script>
 
     <script src="script.js"></script>
 </body>
