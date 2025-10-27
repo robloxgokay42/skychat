@@ -3,125 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkyChat</title>
+    <title>SkyAI - Yapay Zeka Asistanınız</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 
-    <div class="container">
-        <div id="auth-container">
-            <img src="https://i.imgur.com/gK5H3oM.png" alt="Logo" class="logo">
-            <form id="login-form">
-                <h1>Giriş Yap</h1>
-                <input type="text" id="login-username" placeholder="Kullanıcı Adı" required>
-                <button type="submit">Giriş Yap</button>
-            </form>
+    <div id="auth-screen" class="container">
+        <h1>SkyAI'ye Hoş Geldiniz</h1>
+        <p>Devam etmek için lütfen giriş yapın veya kayıt olun.</p>
 
-            <form id="signup-form" style="display: none;">
-                <h1>Kayıt Ol</h1>
-                <input type="text" id="signup-username" placeholder="Kullanıcı Adı" required>
-                <input type="text" id="signup-bio" placeholder="Biyografi">
-                <button type="submit">Kayıt Ol</button>
-            </form>
+        <input type="email" id="auth-email" placeholder="E-posta">
+        <input type="password" id="auth-password" placeholder="Şifre">
 
-            <p id="toggle-auth-text">Hesabın yok mu? Kayıt ol!</p>
+        <button onclick="signInWithEmail()">Giriş Yap</button>
+        <button onclick="signUpWithEmail()">Kayıt Ol</button>
+        <button onclick="signInAnonymously()">Anonim Giriş</button>
+        
+        <p id="auth-message" class="message"></p>
+    </div>
+
+    <div id="chat-screen" class="chat-container hidden">
+        <div class="sidebar">
+            <div class="user-info">
+                <span id="user-display"></span>
+                <button onclick="signOut()">Çıkış Yap</button>
+            </div>
+            <div class="new-chat">
+                <button onclick="startNewChat()">+ Yeni Sohbet</button>
+            </div>
+            <div class="chat-history">
+                <h2>Geçmiş</h2>
+                <p>Yakında eklenecek...</p>
+            </div>
         </div>
 
-        <div id="app-container" style="display: none;">
-            <div class="sidebar">
-                <div class="user-profile">
-                    <img id="current-user-profile-pic" class="profile-pic" src="">
-                    <div class="profile-info">
-                        <span id="current-user-username"></span>
-                        <p id="current-user-bio"></p>
-                    </div>
-                </div>
-
-                <div class="sidebar-buttons">
-                    <button id="create-chat-button" class="action-button blue-button">Yeni Sohbet Oluştur</button>
-                    <button id="create-group-button" class="action-button teal-button">Grup Sohbeti Oluştur</button>
-                    <button id="delete-account-button" class="action-button red-button">Hesabı Sil</button>
-                </div>
-
-                <div class="chat-list">
-                    <h3>Sohbetlerim</h3>
-                    <ul id="chat-list-ul">
-                        </ul>
-                </div>
-
-                <div class="logout-container">
-                    <button id="logout-button" class="action-button red-button">Çıkış Yap</button>
+        <div class="main-chat">
+            <div id="chat-box" class="chat-box">
+                <div class="message system-message">
+                    Merhaba! Ben SkyAI. Size nasıl yardımcı olabilirim?
                 </div>
             </div>
 
-            <div id="main-content" style="display: none;">
-                <div class="chat-header">
-                    <button id="close-chat-button" class="back-button"><i class="fas fa-arrow-left"></i></button>
-                    <img id="chat-partner-profile-pic" class="chat-profile-pic" src="">
-                    <span id="chat-partner-username"></span>
-                    <div id="group-menu-dropdown" class="dropdown">
-                        <button class="dropbtn">...</button>
-                        <div class="dropdown-content">
-                            <a href="#" id="add-user-to-group">Üye Ekle</a>
-                            <a href="#" id="remove-user-from-group">Üye Çıkar</a>
-                            <a href="#" id="manage-permissions">İzinleri Yönet</a>
-                            <a href="#" id="make-admin">Yönetici Yap</a>
-                            <a href="#" id="transfer-ownership">Grup Sahipliğini Devret</a>
-                        </div>
-                    </div>
-                </div>
-                <div id="chat-messages">
-                    </div>
-                <div class="message-input-container">
-                    <label for="file-upload" class="file-upload-label">+</label>
-                    <input type="file" id="file-upload" style="display: none;">
-                    <input type="text" id="message-input" placeholder="Mesaj yaz...">
-                    <button id="send-message-button">Gönder</button>
-                </div>
+            <div class="input-area">
+                <textarea id="user-input" placeholder="Mesajınızı buraya yazın..." rows="1"></textarea>
+                <button id="send-button" onclick="sendMessage()">Gönder</button>
             </div>
-        </div>
-    </div>
-
-    <div id="create-chat-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2 id="modal-title"></h2>
-            <p id="modal-info"></p>
-            <input type="text" id="target-ids-input" placeholder="">
-            <input type="text" id="group-name-input" placeholder="Grup Adı" style="display:none;">
-            <button id="find-users-button">Kullanıcıları Bul</button>
-            <p id="user-search-status"></p>
-            <button id="start-chat-button" disabled>Sohbeti Başlat</button>
-        </div>
-    </div>
-
-    <div id="add-user-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="add-user-close">&times;</span>
-            <h2>Gruba Üye Ekle</h2>
-            <p>Eklenecek kişinin ID'sini girin:</p>
-            <input type="text" id="add-user-id" placeholder="Kullanıcı ID'si">
-            <button id="add-user-to-group-button">Ekle</button>
-        </div>
-    </div>
-    
-    <div id="media-preview-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="media-close-button">&times;</span>
-            <h2>Dosya Önizlemesi</h2>
-            <div id="media-preview-container">
-                </div>
-            <p id="file-name"></p>
-            <button id="send-media-button">Gönder</button>
         </div>
     </div>
 
     <script src="script.js"></script>
-
 </body>
 </html>
