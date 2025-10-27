@@ -12,7 +12,6 @@ const firebaseConfig = {
     measurementId: "G-5KCYENP0V2"
 };
 
-// Firebase Uygulamasını Başlat
 const app = firebase.initializeApp(firebaseConfig);
 const auth = app.auth();
 
@@ -24,16 +23,18 @@ const userInput = document.getElementById('user-input');
 const sendButton = document.getElementById('send-button');
 const authMessage = document.getElementById('auth-message');
 const userDisplay = document.getElementById('user-display');
-let isChatInitialized = false; // Sohbetin başlayıp başlamadığını kontrol etmek için
+const chatHistoryList = document.getElementById('chat-history-list');
+
+// Sohbet Yönetimi Değişkenleri
+let chats = {}; // Tüm sohbetleri saklar: {chatId: [{sender: 'user', content: '...'}, ...]}
+let currentChatId = null; 
 
 // =================================================================
 // 2. Kimlik Doğrulama İşlemleri
 // =================================================================
 
-// Firebase Oturum Durumu Takibi
 auth.onAuthStateChanged((user) => {
     if (user) {
-        // Kullanıcı Giriş Yapmış
         authScreen.classList.add('hidden');
         chatScreen.classList.remove('hidden');
 
@@ -46,17 +47,19 @@ auth.onAuthStateChanged((user) => {
         }
         userDisplay.textContent = displayName;
 
-        // İlk kez giriş yapılıyorsa sohbet kutusunu sıfırla
-        if (!isChatInitialized) {
+        // Sayfa yüklendiğinde sohbetleri yükle veya yeni sohbet başlat
+        if (!currentChatId) {
             startNewChat();
-            isChatInitialized = true;
+        } else {
+            loadChat(currentChatId); // Eğer ID varsa o sohbeti yükle
         }
 
     } else {
-        // Kullanıcı Çıkış Yapmış
         authScreen.classList.remove('hidden');
         chatScreen.classList.add('hidden');
-        isChatInitialized = false;
+        currentChatId = null;
+        chats = {};
+        renderChatHistory();
     }
 });
 
@@ -67,91 +70,116 @@ function displayAuthMessage(message) {
     }, 5000);
 }
 
-// E-posta/Şifre ile Kayıt
+// Kimlik doğrulama fonksiyonları (signUpWithEmail, signInWithEmail, signInAnonymously, signOut) 
+// önceki kod ile aynıdır, burada yer kazanmak için tekrar yazılmamıştır. 
+
 function signUpWithEmail() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
-
     if (!email || password.length < 6) {
         displayAuthMessage("Lütfen geçerli bir e-posta ve en az 6 karakterli bir şifre girin.");
         return;
     }
-
     auth.createUserWithEmailAndPassword(email, password)
-        .then(() => {
-            displayAuthMessage("Kayıt başarılı! Giriş yapılıyor...");
-        })
-        .catch((error) => {
-            displayAuthMessage(`Kayıt Hatası: ${error.message}`);
-        });
+        .then(() => displayAuthMessage("Kayıt başarılı! Giriş yapılıyor..."))
+        .catch((error) => displayAuthMessage(`Kayıt Hatası: ${error.message}`));
 }
 
-// E-posta/Şifre ile Giriş
 function signInWithEmail() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
-
     if (!email || !password) {
         displayAuthMessage("Lütfen e-posta ve şifrenizi girin.");
         return;
     }
-
     auth.signInWithEmailAndPassword(email, password)
-        .then(() => {
-            // Başarılı giriş
-        })
-        .catch((error) => {
-            displayAuthMessage(`Giriş Hatası: ${error.message}`);
-        });
+        .catch((error) => displayAuthMessage(`Giriş Hatası: ${error.message}`));
 }
 
-// Anonim Giriş
 function signInAnonymously() {
     auth.signInAnonymously()
-        .then(() => {
-            // Başarılı anonim giriş
-        })
-        .catch((error) => {
-            displayAuthMessage(`Anonim Giriş Hatası: ${error.message}`);
-        });
+        .catch((error) => displayAuthMessage(`Anonim Giriş Hatası: ${error.message}`));
 }
 
-// Çıkış Yap
 function signOut() {
-    auth.signOut().then(() => {
-        // Çıkış başarılı. onAuthStateChanged otomatik olarak auth ekranına geçecek.
-        startNewChat(); 
-    }).catch((error) => {
-        console.error("Çıkış Hatası:", error);
+    auth.signOut().catch((error) => console.error("Çıkış Hatası:", error));
+}
+
+
+// =================================================================
+// 3. Sohbet İşlemleri (Kalıcılık Simülasyonu Eklendi)
+// =================================================================
+
+function renderChatHistory() {
+    chatHistoryList.innerHTML = '';
+    const chatIds = Object.keys(chats).reverse(); // Yeni sohbetler üste gelsin
+
+    chatIds.forEach(id => {
+        const chat = chats[id];
+        if (chat.length === 0) return;
+
+        // Sohbet başlığını ilk kullanıcı mesajının ilk 30 karakteri yap
+        const title = chat[0].content.substring(0, 30) + (chat[0].content.length > 30 ? '...' : '');
+
+        const link = document.createElement('a');
+        link.href = '#';
+        link.classList.add('chat-link');
+        if (id === currentChatId) {
+            link.classList.add('active');
+        }
+        link.textContent = title;
+        link.onclick = (e) => {
+            e.preventDefault();
+            loadChat(id);
+        };
+        chatHistoryList.appendChild(link);
     });
 }
 
+function loadChat(id) {
+    currentChatId = id;
+    const chat = chats[id] || [];
 
-// =================================================================
-// 3. Sohbet İşlemleri
-// =================================================================
+    // Sohbet kutusunu temizle
+    chatBox.innerHTML = ''; 
+
+    // Mesajları tekrar render et
+    chat.forEach(msg => {
+        const user = auth.currentUser;
+        const userIcon = user.isAnonymous ? '?' : (user.email ? user.email[0].toUpperCase() : 'U');
+        const icon = msg.sender === 'user' ? userIcon : 'S';
+        chatBox.appendChild(createMessageElement(msg.content, msg.sender, icon));
+    });
+    
+    renderChatHistory(); // Aktif sohbeti işaretle
+    scrollToBottom();
+}
 
 function startNewChat() {
-    // Sohbet kutusunu ilk baştaki "Nasıl yardımcı olabilirim?" ekranına geri döndür
+    // Yeni bir benzersiz ID oluştur (Basitlik için timestamp)
+    currentChatId = Date.now().toString();
+    chats[currentChatId] = []; // Boş bir sohbet geçmişi başlat
+
+    // Sohbet kutusunu başlangıç ekranına getir
     chatBox.innerHTML = `
         <div class="initial-message">
             <h2>Nasıl yardımcı olabilirim?</h2>
         </div>
     `;
+
     userInput.value = '';
+    renderChatHistory();
     scrollToBottom();
 }
 
 /**
- * ChatGPT stilinde bir mesaj satırı oluşturur
- * @param {string} content - Mesaj içeriği (HTML destekli)
- * @param {string} type - 'user' veya 'ai'
- * @param {string} iconText - İkon içinde gösterilecek metin (örn. 'U' veya 'A')
+ * Mesaj satırı oluşturur.
  */
 function createMessageElement(content, type, iconText) {
     const messageRow = document.createElement('div');
     messageRow.classList.add('message-row', `${type}-message`);
 
+    // ... (HTML yapısı önceki ile aynı)
     const messageContent = document.createElement('div');
     messageContent.classList.add('message-content');
 
@@ -161,7 +189,6 @@ function createMessageElement(content, type, iconText) {
 
     const text = document.createElement('div');
     text.classList.add('message-text');
-    // İçeriği HTML olarak ekle (Güvenlik için genellikle sanitize edilmelidir, burada basit tutulmuştur)
     text.innerHTML = content; 
 
     messageContent.appendChild(icon);
@@ -171,50 +198,59 @@ function createMessageElement(content, type, iconText) {
 }
 
 function scrollToBottom() {
-    // Sohbet kutusunun kendisi değil, ana sohbet alanı (main-chat) scroll ediyor
     const mainChat = document.querySelector('.main-chat'); 
     mainChat.scrollTop = mainChat.scrollHeight;
 }
 
-function sendMessage() {
+async function sendMessage() {
     const messageText = userInput.value.trim();
     if (messageText === "") return;
-    
-    // İlk mesajı gönderdikten sonra başlangıç ekranını temizle
+
+    // Eğer yeni bir sohbetteyse, başlangıç ekranını temizle
     if (chatBox.querySelector('.initial-message')) {
         chatBox.innerHTML = '';
     }
-
-    // 1. Kullanıcı Mesajını Ekle
+    
+    // 1. Kullanıcı Mesajını Kaydet ve Ekle
     const user = auth.currentUser;
     const userIcon = user.isAnonymous ? '?' : (user.email ? user.email[0].toUpperCase() : 'U');
+    
+    const userMessage = { sender: 'user', content: messageText };
+    chats[currentChatId].push(userMessage);
 
     chatBox.appendChild(createMessageElement(messageText, 'user', userIcon));
     userInput.value = '';
-    userInput.style.height = 'auto'; // Gönderme sonrası boyutu sıfırla
+    userInput.style.height = 'auto';
     scrollToBottom();
+    
+    // Sohbet geçmişini güncelle (Başlık için)
+    renderChatHistory();
 
-    // 2. AI Cevabı Bekleniyor Mesajı (Yer Tutucu)
+    // 2. AI Cevabı Bekleniyor Mesajı
     const aiResponsePlaceholder = createMessageElement("SkyAI yazıyor...", 'ai', 'S');
     chatBox.appendChild(aiResponsePlaceholder);
     scrollToBottom();
 
-    // 3. AI Cevabını Al (Arka Uç Gereklidir!)
-    sendButton.disabled = true; // Gönder butonunu devre dışı bırak
+    sendButton.disabled = true;
 
-    getAiResponse(messageText)
-        .then(aiResponse => {
-            // Yer tutucuyu gerçek cevapla değiştir
-            aiResponsePlaceholder.querySelector('.message-text').innerHTML = aiResponse;
-        })
-        .catch(error => {
-            aiResponsePlaceholder.querySelector('.message-text').textContent = "Hata: AI servisine ulaşılamıyor. Lütfen konsolu kontrol edin.";
-            console.error("AI Çağrı Hatası:", error);
-        })
-        .finally(() => {
-            sendButton.disabled = false;
-            scrollToBottom();
-        });
+    // 3. AI Cevabını Al
+    try {
+        const aiResponse = await getAiResponse(messageText);
+        
+        // Cevabı kaydet
+        const aiMessage = { sender: 'ai', content: aiResponse };
+        chats[currentChatId].push(aiMessage);
+        
+        // Yer tutucuyu gerçek cevapla değiştir
+        aiResponsePlaceholder.querySelector('.message-text').innerHTML = aiResponse;
+
+    } catch (error) {
+        aiResponsePlaceholder.querySelector('.message-text').textContent = "Hata: AI servisine ulaşılamıyor. Konsolu kontrol edin.";
+        console.error("AI Çağrı Hatası:", error);
+    } finally {
+        sendButton.disabled = false;
+        scrollToBottom();
+    }
 }
 
 // Enter tuşu ile gönderme ve Shift + Enter ile yeni satır
@@ -233,26 +269,19 @@ userInput.addEventListener('input', function() {
 
 
 // =================================================================
-// 4. Google AI Çağrısı (YER TUTUCU - ARKA UÇ GEREKLİ!)
+// 4. Google AI Çağrısı (YER TUTUCU)
 // =================================================================
 
-/**
- * ⚠️ GÜVENLİK UYARISI: GERÇEK AI ANAHTARI BURADA KULLANILMAMALIDIR.
- * Bu bir simülasyondur. Gerçek entegrasyon için bir sunucu kullanın.
- */
 async function getAiResponse(prompt) {
-    console.log("AI Anahtarı ön yüzde kullanılmamalıdır. Bu bir yer tutucu yanıttır.");
-
-    // Gerçek AI yanıtını simüle etmek için
+    // ⚠️ GÜVENLİK UYARISI HÂLÂ GEÇERLİDİR.
     return new Promise(resolve => {
         setTimeout(() => {
-            resolve(`Bu, **SkyAI**'dan gelen simüle edilmiş bir yanıttır. Sorunuz: <em>"${prompt}"</em>. Gerçek Google AI entegrasyonu için güvenli bir arka uç (server) gereklidir.<br><br>Giriş yapma sistemi (Firebase) başarılı bir şekilde çalışıyor!`);
-        }, 1500); // 1.5 saniye gecikme
+            resolve(`Bu, **SkyAI**'dan gelen simüle edilmiş bir yanıttır. Sorunuz: <em>"${prompt}"</em>. **Sohbet kalıcılık simülasyonu başarılı!** (Sayfayı yenilemeden bu sohbete geri dönebilirsiniz). Gerçek Google AI entegrasyonu için güvenli bir arka uç (server) gereklidir.`);
+        }, 1500);
     });
 }
 
-// Uygulama Başladığında
 document.addEventListener('DOMContentLoaded', () => {
-    // Input'un ilk otomatik boyutlandırmasını yap
     userInput.dispatchEvent(new Event('input'));
+    // Firebase onAuthStateChanged tetikleneceği için başlangıç burada gerekmez.
 });
