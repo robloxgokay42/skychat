@@ -10,45 +10,63 @@
 </head>
 <body>
 
-    <div id="auth-screen" class="container">
-        <h1>SkyAI'ye Hoş Geldiniz</h1>
-        <p>Devam etmek için lütfen giriş yapın veya kayıt olun.</p>
+    <div id="auth-screen">
+        <div>
+            <h1 class="logo">SkyAI</h1>
+            <p>Devam etmek için giriş yapın.</p>
 
-        <input type="email" id="auth-email" placeholder="E-posta">
-        <input type="password" id="auth-password" placeholder="Şifre">
+            <input type="email" id="auth-email" placeholder="E-posta">
+            <input type="password" id="auth-password" placeholder="Şifre">
 
-        <button onclick="signInWithEmail()">Giriş Yap</button>
-        <button onclick="signUpWithEmail()">Kayıt Ol</button>
-        <button onclick="signInAnonymously()">Anonim Giriş</button>
-        
-        <p id="auth-message" class="message"></p>
+            <div class="auth-buttons">
+                <button onclick="signInWithEmail()">Giriş Yap</button>
+                <button onclick="signUpWithEmail()">Kayıt Ol</button>
+                <button onclick="signInAnonymously()">Anonim Giriş</button>
+            </div>
+            
+            <p id="auth-message" class="message"></p>
+        </div>
     </div>
 
     <div id="chat-screen" class="chat-container hidden">
         <div class="sidebar">
-            <div class="user-info">
-                <span id="user-display"></span>
-                <button onclick="signOut()">Çıkış Yap</button>
+            <div class="sidebar-header">
+                <button class="new-chat-button" onclick="startNewChat()">
+                    <span>Yeni sohbet</span> 
+                    <span style="font-size: 1.2em;">&#x2795;</span> 
+                </button>
             </div>
-            <div class="new-chat">
-                <button onclick="startNewChat()">+ Yeni Sohbet</button>
-            </div>
+
             <div class="chat-history">
-                <h2>Geçmiş</h2>
-                <p>Yakında eklenecek...</p>
+                <a href="#" class="chat-link">Osmanlı telgrafhane rütbeleri</a>
+                <a href="#" class="chat-link">İttihat ve Terakki tarihi</a>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-action">
+                    <span id="user-display">Kullanıcı</span>
+                    <button onclick="signOut()">Çıkış</button>
+                </div>
             </div>
         </div>
 
         <div class="main-chat">
+            
             <div id="chat-box" class="chat-box">
-                <div class="message system-message">
-                    Merhaba! Ben SkyAI. Size nasıl yardımcı olabilirim?
+                <div class="initial-message">
+                    <h2>Nasıl yardımcı olabilirim?</h2>
                 </div>
             </div>
 
-            <div class="input-area">
-                <textarea id="user-input" placeholder="Mesajınızı buraya yazın..." rows="1"></textarea>
-                <button id="send-button" onclick="sendMessage()">Gönder</button>
+            <div class="input-area-container">
+                <div class="input-area">
+                    <div class="input-prefix">+</div> 
+                    <textarea id="user-input" placeholder="Herhangi bir şey sor..." rows="1"></textarea>
+                    <button id="send-button" onclick="sendMessage()">
+                        <span style="font-size: 1.2em;">&#x27A4;</span>
+                    </button>
+                </div>
+                <p class="disclaimer">SkyAI, hatalar yapabilir. Önemli bilgileri kontrol edin.</p>
             </div>
         </div>
     </div>
